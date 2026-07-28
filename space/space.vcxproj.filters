@@ -1,0 +1,143 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Internals">
+      <UniqueIdentifier>{ad3d1354-77e1-41ca-a500-696f377ba695}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Internals\VulkanCore">
+      <UniqueIdentifier>{34aa4ea8-4168-4066-b01f-06128ced9cd0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Internals\Dependancies">
+      <UniqueIdentifier>{60fd2b64-f408-4a8d-b853-3df53178196f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Internals\APIInterface">
+      <UniqueIdentifier>{0dfedd41-e022-4b6a-8542-d8a28721d45c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Internals">
+      <UniqueIdentifier>{b0e7c7d9-8624-4391-8998-995433a1e709}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Internals\Dependancies">
+      <UniqueIdentifier>{64d3f84b-df82-49ec-b81d-2015b019d6e4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Internals\VulkanCore">
+      <UniqueIdentifier>{8f918c03-8771-410e-a1ea-fdcbba2be63d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Internals\APIInterface">
+      <UniqueIdentifier>{64b17803-0bc8-4f4e-8154-1acedcbab25b}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils2.h">
+      <Filter>Header Files</Filter>
+    </ClCompile>
+    <ClCompile Include="spirv_reflect.c">
+      <Filter>Source Files\Internals\Dependancies</Filter>
+    </ClCompile>
+    <ClCompile Include="vk_mem_alloc.cpp">
+      <Filter>Source Files\Internals\Dependancies</Filter>
+    </ClCompile>
+    <ClCompile Include="DescriptorManager.cpp">
+      <Filter>Source Files\Internals\VulkanCore</Filter>
+    </ClCompile>
+    <ClCompile Include="SwapChain.cpp">
+      <Filter>Source Files\Internals\VulkanCore</Filter>
+    </ClCompile>
+    <ClCompile Include="VulkanContext.cpp">
+      <Filter>Source Files\Internals\VulkanCore</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderPass.cpp">
+      <Filter>Source Files\Internals\VulkanCore</Filter>
+    </ClCompile>
+    <ClCompile Include="Buffer.cpp">
+      <Filter>Source Files\Internals\VulkanCore</Filter>
+    </ClCompile>
+    <ClCompile Include="Material.cpp">
+      <Filter>Source Files\Internals\APIInterface</Filter>
+    </ClCompile>
+    <ClCompile Include="Mesh.cpp">
+      <Filter>Source Files\Internals\APIInterface</Filter>
+    </ClCompile>
+    <ClCompile Include="Pipeline.cpp">
+      <Filter>Source Files\Internals\APIInterface</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer.cpp">
+      <Filter>Source Files\Internals\APIInterface</Filter>
+    </ClCompile>
+    <ClCompile Include="Shader.cpp">
+      <Filter>Source Files\Internals\APIInterface</Filter>
+    </ClCompile>
+    <ClCompile Include="Texture.cpp">
+      <Filter>Source Files\Internals\APIInterface</Filter>
+    </ClCompile>
+    <ClCompile Include="Window.cpp">
+      <Filter>Source Files\Internals\APIInterface</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="spirv_reflect.h">
+      <Filter>Header Files\Internals\Dependancies</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_mem_alloc.h">
+      <Filter>Header Files\Internals\Dependancies</Filter>
+    </ClInclude>
+    <ClInclude Include="DescriptorManager.h">
+      <Filter>Header Files\Internals\VulkanCore</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderPass.h">
+      <Filter>Header Files\Internals\VulkanCore</Filter>
+    </ClInclude>
+    <ClInclude Include="VulkanContext.h">
+      <Filter>Header Files\Internals\VulkanCore</Filter>
+    </ClInclude>
+    <ClInclude Include="SwapChain.h">
+      <Filter>Header Files\Internals\VulkanCore</Filter>
+    </ClInclude>
+    <ClInclude Include="Buffer.h">
+      <Filter>Header Files\Internals\VulkanCore</Filter>
+    </ClInclude>
+    <ClInclude Include="Material.h">
+      <Filter>Header Files\Internals\APIInterface</Filter>
+    </ClInclude>
+    <ClInclude Include="Mesh.h">
+      <Filter>Header Files\Internals\APIInterface</Filter>
+    </ClInclude>
+    <ClInclude Include="Pipeline.h">
+      <Filter>Header Files\Internals\APIInterface</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer.h">
+      <Filter>Header Files\Internals\APIInterface</Filter>
+    </ClInclude>
+    <ClInclude Include="Shader.h">
+      <Filter>Header Files\Internals\APIInterface</Filter>
+    </ClInclude>
+    <ClInclude Include="Texture.h">
+      <Filter>Header Files\Internals\APIInterface</Filter>
+    </ClInclude>
+    <ClInclude Include="Window.h">
+      <Filter>Header Files\Internals\APIInterface</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="triangle.vert">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="triangle.frag">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
+</Project>
