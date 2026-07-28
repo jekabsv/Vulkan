@@ -9,7 +9,7 @@
 #include "Buffer.h"
 #include "DescriptorManager.h"
 #include "RenderPass.h"
-#include "Swapchain.h"
+#include "SwapChain.h"
 #include "Texture.h"
 
 namespace Core

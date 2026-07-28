@@ -148,15 +148,22 @@
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Assembly.cpp" />
     <ClCompile Include="Buffer.cpp" />
     <ClCompile Include="DescriptorManager.cpp" />
+    <ClCompile Include="HullGenerator.cpp" />
+    <ClCompile Include="Mark.cpp" />
     <ClCompile Include="Material.cpp" />
     <ClCompile Include="Mesh.cpp" />
+    <ClCompile Include="MeshBuilder.cpp" />
+    <ClCompile Include="PartCatalog.cpp" />
     <ClCompile Include="Pipeline.cpp" />
+    <ClCompile Include="Polygon2D.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="RenderPass.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="ship_main.cpp" />
     <ClCompile Include="spirv_reflect.c" />
     <ClCompile Include="SwapChain.cpp" />
     <ClCompile Include="Texture.cpp" />
@@ -166,11 +173,18 @@
     <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Assembly.h" />
     <ClInclude Include="Buffer.h" />
     <ClInclude Include="DescriptorManager.h" />
+    <ClInclude Include="Grid.h" />
+    <ClInclude Include="HullGenerator.h" />
+    <ClInclude Include="Mark.h" />
     <ClInclude Include="Material.h" />
     <ClInclude Include="Mesh.h" />
+    <ClInclude Include="MeshBuilder.h" />
+    <ClInclude Include="PartCatalog.h" />
     <ClInclude Include="Pipeline.h" />
+    <ClInclude Include="Polygon2D.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="RenderPass.h" />
     <ClInclude Include="Shader.h" />

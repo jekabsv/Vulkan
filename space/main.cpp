@@ -50,7 +50,7 @@ namespace
     }
 }
 
-int main()
+int main2()
 {
     try
     {
