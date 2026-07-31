@@ -148,6 +148,7 @@
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="BeamEditor.cpp" />
     <ClCompile Include="Buffer.cpp" />
     <ClCompile Include="DescriptorManager.cpp" />
     <ClCompile Include="Material.cpp" />
@@ -166,6 +167,7 @@
     <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BeamEditor.h" />
     <ClInclude Include="Buffer.h" />
     <ClInclude Include="DescriptorManager.h" />
     <ClInclude Include="Material.h" />
