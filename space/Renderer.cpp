@@ -271,6 +271,82 @@ namespace Core
         vkCmdDrawIndexed(commandBuffer, mesh.GetIndexCount(), 1, 0, 0, 0);
     }
 
+    void Renderer::BeginBatch()
+    {
+        for (auto& entry : m_ActiveBatches)
+        {
+            entry.second.Clear();
+        }
+    }
+
+    void Renderer::Submit(const Mesh& mesh, Material& material, const glm::mat4& transform)
+    {
+        if (!m_FrameStarted)
+        {
+            throw std::runtime_error("Submit called outside of a started frame");
+        }
+
+        const BatchKey key{ &mesh, &material };
+        auto it = m_ActiveBatches.find(key);
+
+        if (it == m_ActiveBatches.end())
+        {
+            it = m_ActiveBatches.try_emplace(key, *m_Context, mesh, material, m_Swapchain.GetMaxFramesInFlight()).first;
+        }
+
+        it->second.Add(transform);
+    }
+
+    void Renderer::FlushBatch()
+    {
+        if (!m_FrameStarted)
+        {
+            throw std::runtime_error("FlushBatch called outside of a started frame");
+        }
+
+        VkCommandBuffer commandBuffer = m_CommandBuffers[m_FrameIndex];
+
+        for (auto& entry : m_ActiveBatches)
+        {
+            InstanceBatch& batch = entry.second;
+
+            if (batch.GetInstanceCount() == 0)
+            {
+                continue;
+            }
+
+            Material& material = batch.GetMaterial();
+            const GraphicsPipeline& pipeline = material.GetPipeline();
+
+            if (m_BoundPipeline != &pipeline)
+            {
+                pipeline.Bind(commandBuffer);
+                m_BoundPipeline = &pipeline;
+                m_CameraDirty = true;
+            }
+
+            if (m_CameraDirty)
+            {
+                BindCameraSet(pipeline);
+                m_CameraDirty = false;
+            }
+
+            material.Flush();
+
+            std::vector<VkDescriptorSet> sets;
+            sets.push_back(material.GetDescriptorSet());
+            pipeline.BindDescriptorSets(commandBuffer, material.GetSet(), sets);
+
+            batch.Flush(m_FrameIndex);
+
+            const Mesh& mesh = batch.GetMesh();
+            mesh.Bind(commandBuffer);
+            batch.Bind(commandBuffer, m_FrameIndex, 1);
+
+            vkCmdDrawIndexed(commandBuffer, mesh.GetIndexCount(), batch.GetInstanceCount(), 0, 0, 0);
+        }
+    }
+
     void Renderer::EndRenderPass()
     {
         VkCommandBuffer commandBuffer = m_CommandBuffers[m_FrameIndex];

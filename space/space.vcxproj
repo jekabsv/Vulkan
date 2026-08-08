@@ -148,6 +148,7 @@
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Batch.cpp" />
     <ClCompile Include="Buffer.cpp" />
     <ClCompile Include="DescriptorManager.cpp" />
     <ClCompile Include="Material.cpp" />
@@ -166,6 +167,7 @@
     <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Batch.h" />
     <ClInclude Include="Buffer.h" />
     <ClInclude Include="DescriptorManager.h" />
     <ClInclude Include="Material.h" />
@@ -182,6 +184,7 @@
     <ClInclude Include="Window.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="triange_instanced.vert" />
     <None Include="triangle.frag" />
     <None Include="triangle.vert" />
   </ItemGroup>

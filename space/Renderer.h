@@ -1,11 +1,14 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
+#include <unordered_map>
 #include <vector>
 
 #include <glm/glm.hpp>
 #include <vulkan/vulkan.h>
 
+#include "Batch.h"
 #include "Buffer.h"
 #include "DescriptorManager.h"
 #include "RenderPass.h"
@@ -20,6 +23,36 @@ namespace Core
     class GraphicsPipeline;
     class Material;
     class Mesh;
+
+    struct BatchKey
+    {
+        const Mesh* mesh{ nullptr };
+        Material* material{ nullptr };
+
+        bool operator==(const BatchKey& other) const
+        {
+            return mesh == other.mesh && material == other.material;
+        }
+    };
+
+} // namespace Core
+
+namespace std
+{
+    template<>
+    struct hash<Core::BatchKey>
+    {
+        size_t operator()(const Core::BatchKey& key) const noexcept
+        {
+            const size_t meshHash = hash<const void*>()(key.mesh);
+            const size_t materialHash = hash<const void*>()(key.material);
+            return meshHash ^ (materialHash + 0x9e3779b9 + (meshHash << 6) + (meshHash >> 2));
+        }
+    };
+}
+
+namespace Core
+{
 
     struct Camera
     {
@@ -65,6 +98,10 @@ namespace Core
         void EndRenderPass();
         void EndFrame();
 
+        void BeginBatch();
+        void Submit(const Mesh& mesh, Material& material, const glm::mat4& transform);
+        void FlushBatch();
+
         Material CreateMaterial(const GraphicsPipeline& pipeline, uint32_t set);
         Material CreateMaterial(const GraphicsPipeline& pipeline);
 
@@ -108,6 +145,8 @@ namespace Core
         bool m_FrameStarted{ false };
         bool m_CameraDirty{ true };
         const GraphicsPipeline* m_BoundPipeline{ nullptr };
+
+        std::unordered_map<BatchKey, InstanceBatch> m_ActiveBatches;
     };
 
 } // namespace Core
