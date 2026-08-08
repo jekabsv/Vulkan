@@ -95,11 +95,13 @@ namespace Core
         void BeginRenderPass(const glm::vec4& clearColor);
         void SetCamera(const Camera& camera);
         void DrawMesh(const Mesh& mesh, Material& material, const glm::mat4& transform);
+        void DrawMesh(const Mesh& mesh, Material& material, const void* pushConstantData, uint32_t pushConstantSize);
         void EndRenderPass();
         void EndFrame();
 
         void BeginBatch();
         void Submit(const Mesh& mesh, Material& material, const glm::mat4& transform);
+        void Submit(const Mesh& mesh, Material& material, const void* instanceData, uint32_t instanceDataSize);
         void FlushBatch();
 
         Material CreateMaterial(const GraphicsPipeline& pipeline, uint32_t set);

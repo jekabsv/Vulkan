@@ -103,6 +103,29 @@ namespace Core
         return Mesh(context, vertices, indices);
     }
 
+    Mesh Mesh::CreateQuad(VulkanContext& context)
+    {
+        std::vector<Vertex> vertices(4);
+        vertices[0].position = { -0.5f, -0.5f, 0.0f };
+        vertices[1].position = { 0.5f, -0.5f, 0.0f };
+        vertices[2].position = { 0.5f,  0.5f, 0.0f };
+        vertices[3].position = { -0.5f,  0.5f, 0.0f };
+
+        vertices[0].uv = { 0.0f, 1.0f };
+        vertices[1].uv = { 1.0f, 1.0f };
+        vertices[2].uv = { 1.0f, 0.0f };
+        vertices[3].uv = { 0.0f, 0.0f };
+
+        for (Vertex& vertex : vertices)
+        {
+            vertex.normal = { 0.0f, 0.0f, 1.0f };
+        }
+
+        const std::vector<uint32_t> indices = { 0, 1, 2, 2, 3, 0 };
+
+        return Mesh(context, vertices, indices);
+    }
+
     Mesh Mesh::CreateCustom(VulkanContext& context, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices)
     {
         return Mesh(context, vertices, indices);

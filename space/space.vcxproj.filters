@@ -90,6 +90,9 @@
     <ClCompile Include="Batch.cpp">
       <Filter>Source Files\Internals</Filter>
     </ClCompile>
+    <ClCompile Include="Font.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="spirv_reflect.h">
@@ -137,6 +140,9 @@
     <ClInclude Include="Batch.h">
       <Filter>Header Files\Internals</Filter>
     </ClInclude>
+    <ClInclude Include="Font.h">
+      <Filter>Header Files\Internals</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="triangle.vert">
@@ -146,6 +152,18 @@
       <Filter>Resource Files</Filter>
     </None>
     <None Include="triange_instanced.vert">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="text.vert">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="text.frag">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="text_instanced.vert">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="text_instanced.frag">
       <Filter>Resource Files</Filter>
     </None>
   </ItemGroup>

@@ -271,6 +271,49 @@ namespace Core
         vkCmdDrawIndexed(commandBuffer, mesh.GetIndexCount(), 1, 0, 0, 0);
     }
 
+    void Renderer::DrawMesh(const Mesh& mesh, Material& material, const glm::mat4& transform)
+    {
+        DrawMesh(mesh, material, &transform, sizeof(glm::mat4));
+    }
+
+    void Renderer::DrawMesh(const Mesh& mesh, Material& material, const void* pushConstantData, uint32_t pushConstantSize)
+    {
+        if (!m_FrameStarted)
+        {
+            throw std::runtime_error("DrawMesh called outside of a started frame");
+        }
+
+        VkCommandBuffer commandBuffer = m_CommandBuffers[m_FrameIndex];
+        const GraphicsPipeline& pipeline = material.GetPipeline();
+
+        if (m_BoundPipeline != &pipeline)
+        {
+            pipeline.Bind(commandBuffer);
+            m_BoundPipeline = &pipeline;
+            m_CameraDirty = true;
+        }
+
+        if (m_CameraDirty)
+        {
+            BindCameraSet(pipeline);
+            m_CameraDirty = false;
+        }
+
+        material.Flush();
+
+        std::vector<VkDescriptorSet> sets;
+        sets.push_back(material.GetDescriptorSet());
+        pipeline.BindDescriptorSets(commandBuffer, material.GetSet(), sets);
+
+        if (pipeline.HasPushConstants() && pushConstantData != nullptr)
+        {
+            pipeline.PushConstants(commandBuffer, 0, pushConstantSize, pushConstantData);
+        }
+
+        mesh.Bind(commandBuffer);
+        vkCmdDrawIndexed(commandBuffer, mesh.GetIndexCount(), 1, 0, 0, 0);
+    }
+
     void Renderer::BeginBatch()
     {
         for (auto& entry : m_ActiveBatches)
@@ -280,6 +323,11 @@ namespace Core
     }
 
     void Renderer::Submit(const Mesh& mesh, Material& material, const glm::mat4& transform)
+    {
+        Submit(mesh, material, &transform, sizeof(glm::mat4));
+    }
+
+    void Renderer::Submit(const Mesh& mesh, Material& material, const void* instanceData, uint32_t instanceDataSize)
     {
         if (!m_FrameStarted)
         {
@@ -291,10 +339,10 @@ namespace Core
 
         if (it == m_ActiveBatches.end())
         {
-            it = m_ActiveBatches.try_emplace(key, *m_Context, mesh, material, m_Swapchain.GetMaxFramesInFlight()).first;
+            it = m_ActiveBatches.try_emplace(key, *m_Context, mesh, material, m_Swapchain.GetMaxFramesInFlight(), instanceDataSize).first;
         }
 
-        it->second.Add(transform);
+        it->second.Add(instanceData, instanceDataSize);
     }
 
     void Renderer::FlushBatch()

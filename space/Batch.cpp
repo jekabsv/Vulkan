@@ -2,6 +2,9 @@
 
 #include "Pipeline.h"
 
+#include <cstring>
+#include <stdexcept>
+
 namespace Core
 {
 
@@ -10,28 +13,41 @@ namespace Core
         constexpr uint32_t kMinInstanceCapacity = 16;
     }
 
-    InstanceBatch::InstanceBatch(VulkanContext& context, const Mesh& mesh, Material& material, uint32_t frameCount)
+    InstanceBatch::InstanceBatch(VulkanContext& context, const Mesh& mesh, Material& material, uint32_t frameCount, uint32_t instanceStride)
         : m_Context(&context)
         , m_Mesh(&mesh)
         , m_Material(&material)
+        , m_Stride(instanceStride)
     {
+        if (instanceStride == 0)
+        {
+            throw std::runtime_error("InstanceBatch stride must be greater than zero");
+        }
+
         m_InstanceBuffers.reserve(frameCount);
         m_BufferCapacities.resize(frameCount, kMinInstanceCapacity);
 
         for (uint32_t i = 0; i < frameCount; i++)
         {
-            m_InstanceBuffers.emplace_back(context, sizeof(glm::mat4) * kMinInstanceCapacity, BufferType::Vertex, MemoryUsage::HostVisible);
+            m_InstanceBuffers.emplace_back(context, static_cast<VkDeviceSize>(instanceStride) * kMinInstanceCapacity, BufferType::Vertex, MemoryUsage::HostVisible);
         }
     }
 
-    void InstanceBatch::Add(const glm::mat4& transform)
+    void InstanceBatch::Add(const void* instanceData, uint32_t size)
     {
-        m_Transforms.push_back(transform);
+        if (size != m_Stride)
+        {
+            throw std::runtime_error("InstanceBatch::Add size does not match this batch's instance stride");
+        }
+
+        const size_t offset = m_InstanceData.size();
+        m_InstanceData.resize(offset + size);
+        std::memcpy(m_InstanceData.data() + offset, instanceData, size);
     }
 
     void InstanceBatch::Clear()
     {
-        m_Transforms.clear();
+        m_InstanceData.clear();
     }
 
     void InstanceBatch::Flush(uint32_t frameIndex)
@@ -52,11 +68,11 @@ namespace Core
                 newCapacity *= 2;
             }
 
-            m_InstanceBuffers[frameIndex] = Buffer(*m_Context, sizeof(glm::mat4) * newCapacity, BufferType::Vertex, MemoryUsage::HostVisible);
+            m_InstanceBuffers[frameIndex] = Buffer(*m_Context, static_cast<VkDeviceSize>(m_Stride) * newCapacity, BufferType::Vertex, MemoryUsage::HostVisible);
             m_BufferCapacities[frameIndex] = newCapacity;
         }
 
-        m_InstanceBuffers[frameIndex].SetData(m_Transforms.data(), sizeof(glm::mat4) * instanceCount);
+        m_InstanceBuffers[frameIndex].SetData(m_InstanceData.data(), m_InstanceData.size());
     }
 
     void InstanceBatch::Bind(VkCommandBuffer commandBuffer, uint32_t frameIndex, uint32_t binding) const
