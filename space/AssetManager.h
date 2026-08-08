@@ -17,19 +17,6 @@ namespace Core
     class VulkanContext;
     class Renderer;
 
-    // TODO: uncomment once a Sound class exists.
-    // class Sound;
-
-    // Owns every asset by name (Mesh, Texture, Font, Material, Shader, GraphicsPipeline, ...) and
-    // hands out references to callers for the rest of the asset's lifetime. Assets are constructed
-    // elsewhere - directly by the caller for Set (e.g. `Mesh::CreateCube(context)`), or by
-    // AssetManager itself for Load - then handed to AssetManager, which becomes the sole owner;
-    // everyone else only holds references/pointers into it, the same non-owning-pointer convention
-    // already used throughout Core (e.g. Material only holds a `const Texture*`, never owning it).
-    //
-    // Getters return `const T&` and throw if the name isn't found, matching how the rest of Core
-    // reports misuse (Buffer::SetData, Material::WriteRaw, etc. all throw rather than return a null/
-    // empty result). Use HasX() first if a missing asset is an expected, non-exceptional case.
     class AssetManager
     {
     public:

@@ -1,5 +1,6 @@
 #include "Renderer.h"
 
+#include "Font.h"
 #include "Material.h"
 #include "Mesh.h"
 #include "Pipeline.h"
@@ -7,6 +8,8 @@
 #include "Window.h"
 
 #include <stdexcept>
+
+#include <glm/gtc/matrix_transform.hpp>
 
 namespace Core
 {
@@ -305,6 +308,37 @@ namespace Core
         }
 
         it->second.Add(instanceData, instanceDataSize);
+    }
+
+    void Renderer::SubmitText(Font& font, const std::string& text, const glm::vec3& origin, float scale, const glm::vec4& color)
+    {
+        SubmitText(font, text, glm::translate(glm::mat4(1.0f), origin), scale, color);
+    }
+
+    void Renderer::SubmitText(Font& font, const std::string& text, const glm::mat4& transform, float scale, const glm::vec4& color)
+    {
+        glm::vec3 pen(0.0f);
+
+        for (char character : text)
+        {
+            const Glyph* glyph = font.FindGlyph(character);
+
+            if (glyph == nullptr)
+            {
+                pen.x += font.GetDefaultAdvance() * scale;
+                continue;
+            }
+
+            GlyphInstance instance;
+            instance.transform = transform * Font::ComputeGlyphTransform(pen, *glyph, scale);
+            instance.uvOffset = glyph->uvOffset;
+            instance.uvSize = glyph->uvSize;
+            instance.color = color;
+
+            Submit(font.GetQuadMesh(), font.GetMaterial(), &instance, sizeof(GlyphInstance));
+
+            pen.x += glyph->advance * scale;
+        }
     }
 
     void Renderer::FlushBatch()

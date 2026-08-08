@@ -42,7 +42,6 @@ namespace Core
         const Mesh& GetMesh() const { return *m_Mesh; }
         Material& GetMaterial() const { return *m_Material; }
 
-        // mat4-only per-instance transform (matches triangle_instanced.vert).
         static void AppendInstanceLayout(VertexInputLayout& layout, uint32_t binding, uint32_t startLocation);
 
     private:

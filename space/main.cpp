@@ -199,7 +199,7 @@ int main()
                     }
                 }
 
-                textFont.SubmitText(renderer, "HELLO VULKAN", glm::vec3(-2.0f, 2.5f, 0.0f), textScale, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+                renderer.SubmitText(textFont, "HELLO VULKAN", glm::vec3(-2.0f, 2.5f, 0.0f), textScale, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 
                 renderer.FlushBatch();
 

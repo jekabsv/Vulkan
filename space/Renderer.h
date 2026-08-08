@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -23,6 +24,7 @@ namespace Core
     class GraphicsPipeline;
     class Material;
     class Mesh;
+    class Font;
 
     struct BatchKey
     {
@@ -102,6 +104,8 @@ namespace Core
         void BeginBatch();
         void Submit(const Mesh& mesh, Material& material, const glm::mat4& transform);
         void Submit(const Mesh& mesh, Material& material, const void* instanceData, uint32_t instanceDataSize);
+        void SubmitText(Font& font, const std::string& text, const glm::vec3& origin, float scale, const glm::vec4& color);
+        void SubmitText(Font& font, const std::string& text, const glm::mat4& transform, float scale, const glm::vec4& color);
         void FlushBatch();
 
         Material CreateMaterial(const GraphicsPipeline& pipeline, uint32_t set);

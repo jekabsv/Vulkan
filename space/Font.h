@@ -57,8 +57,12 @@ namespace Core
         void SetDefaultAdvance(float advance) { m_DefaultAdvance = advance; }
 
         void DrawText(Renderer& renderer, const std::string& text, const glm::vec3& origin, float scale, const glm::vec4& color);
-        void SubmitText(Renderer& renderer, const std::string& text, const glm::vec3& origin, float scale, const glm::vec4& color);
 
+        const Mesh& GetQuadMesh() const { return m_QuadMesh; }
+        Material& GetMaterial() { return m_Material; }
+        float GetDefaultAdvance() const { return m_DefaultAdvance; }
+
+        static glm::mat4 ComputeGlyphTransform(const glm::vec3& pen, const Glyph& glyph, float scale);
 
         static Font CreateMonospaceGrid(
             VulkanContext& context,
@@ -71,9 +75,6 @@ namespace Core
             const glm::vec2& glyphSize);
 
         static void AppendInstanceLayout(VertexInputLayout& layout, uint32_t binding, uint32_t startLocation);
-
-    private:
-        static glm::mat4 ComputeGlyphTransform(const glm::vec3& pen, const Glyph& glyph, float scale);
 
     private:
         VulkanContext* m_Context{ nullptr };

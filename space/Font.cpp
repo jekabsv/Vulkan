@@ -68,32 +68,6 @@ namespace Core
         }
     }
 
-    void Font::SubmitText(Renderer& renderer, const std::string& text, const glm::vec3& origin, float scale, const glm::vec4& color)
-    {
-        glm::vec3 pen = origin;
-
-        for (char character : text)
-        {
-            const Glyph* glyph = FindGlyph(character);
-
-            if (glyph == nullptr)
-            {
-                pen.x += m_DefaultAdvance * scale;
-                continue;
-            }
-
-            GlyphInstance instance;
-            instance.transform = ComputeGlyphTransform(pen, *glyph, scale);
-            instance.uvOffset = glyph->uvOffset;
-            instance.uvSize = glyph->uvSize;
-            instance.color = color;
-
-            renderer.Submit(m_QuadMesh, m_Material, &instance, sizeof(GlyphInstance));
-
-            pen.x += glyph->advance * scale;
-        }
-    }
-
     Font Font::CreateMonospaceGrid(
         VulkanContext& context,
         Renderer& renderer,
