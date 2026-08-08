@@ -148,6 +148,7 @@
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AssetManager.cpp" />
     <ClCompile Include="Batch.cpp" />
     <ClCompile Include="Buffer.cpp" />
     <ClCompile Include="DescriptorManager.cpp" />
@@ -160,14 +161,17 @@
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="spirv_reflect.c" />
+    <ClCompile Include="stb_truetype.cpp" />
     <ClCompile Include="SwapChain.cpp" />
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="Utils2.h" />
     <ClCompile Include="vk_mem_alloc.cpp" />
+    <ClCompile Include="VulkanAbstraction.h" />
     <ClCompile Include="VulkanContext.cpp" />
     <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AssetManager.h" />
     <ClInclude Include="Batch.h" />
     <ClInclude Include="Buffer.h" />
     <ClInclude Include="DescriptorManager.h" />
@@ -179,6 +183,7 @@
     <ClInclude Include="RenderPass.h" />
     <ClInclude Include="Shader.h" />
     <ClInclude Include="spirv_reflect.h" />
+    <ClInclude Include="stb_truetype.h" />
     <ClInclude Include="SwapChain.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="vk_mem_alloc.h" />
@@ -193,6 +198,9 @@
     <None Include="triange_instanced.vert" />
     <None Include="triangle.frag" />
     <None Include="triangle.vert" />
+  </ItemGroup>
+  <ItemGroup>
+    <Font Include="font.ttf" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
