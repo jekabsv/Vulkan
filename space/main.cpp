@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <vector>
+#include <string>
 
 namespace
 {
@@ -152,8 +153,12 @@ int main()
 
         const auto startTime = std::chrono::high_resolution_clock::now();
 
+        float prevFrameTime = 0.0f;
+
         while (!window.ShouldClose())
         {
+            auto FrameStart = std::chrono::high_resolution_clock::now();
+
             window.PollEvents();
 
             if (window.IsKeyPressed(Core::KeyCode::Escape))
@@ -169,9 +174,26 @@ int main()
             {
                 mainCamera.position.z += 0.1f;
             }
+			if (window.IsKeyDown(Core::KeyCode::A))
+			{
+				mainCamera.position.x -= 0.1f;
+			}
+			if (window.IsKeyDown(Core::KeyCode::D))
+			{
+				mainCamera.position.x += 0.1f;
+			}
+			if (window.IsKeyDown(Core::KeyCode::Space))
+			{
+				mainCamera.position.y += 0.1f;
+			}
+			if (window.IsKeyDown(Core::KeyCode::Q))
+			{
+				mainCamera.position.y -= 0.1f;
+			}
 
-            const auto now = std::chrono::high_resolution_clock::now();
-            const float elapsed = std::chrono::duration<float>(now - startTime).count();
+            auto now = std::chrono::high_resolution_clock::now();
+            
+            float elapsed = std::chrono::duration<float>(now - startTime).count();
 
             mainCamera.view = glm::lookAt(mainCamera.position, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
             mainCamera.projection = glm::perspective(glm::radians(50.0f), renderer.GetAspectRatio(), 0.1f, 100.0f);
@@ -189,9 +211,12 @@ int main()
 
                 renderer.BeginBatch();
 
-                for (int gridX = -1; gridX <= 1; gridX++)
+
+				constexpr int a = 100;
+
+                for (int gridX = -1*a; gridX <= a; gridX++)
                 {
-                    for (int gridZ = -1; gridZ <= 1; gridZ++)
+                    for (int gridZ = -1*a; gridZ <= a; gridZ++)
                     {
                         const glm::vec3 offset(static_cast<float>(gridX) * 1.5f, 0.0f, static_cast<float>(gridZ) * 1.5f);
                         const glm::mat4 instanceTransform = glm::translate(glm::mat4(1.0f), offset) * transformMatrix;
@@ -199,12 +224,17 @@ int main()
                     }
                 }
 
-                renderer.SubmitText(textFont, "HELLO VULKAN", glm::vec3(-2.0f, 2.5f, 0.0f), textScale, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+                renderer.SubmitText(textFont, "Hello " + std::to_string(4 * a * a) + " cubes", glm::vec3(-2.0f, 2.5f, 0.0f), textScale, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+				renderer.SubmitText(textFont, "FPS: " + std::to_string(1.0f / std::max(0.0001f, prevFrameTime)) + " FPS", glm::vec3(-2.0f, 1.5f, 0.0f), textScale, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 
                 renderer.FlushBatch();
 
                 renderer.EndRenderPass();
                 renderer.EndFrame();
+
+                now = std::chrono::high_resolution_clock::now();
+                prevFrameTime = std::chrono::duration<float>(now - FrameStart).count();
+    
             }
         }
 
