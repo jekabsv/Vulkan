@@ -105,6 +105,9 @@
     <ClCompile Include="ComputePipeline.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Camera.cpp">
+      <Filter>Source Files\Internals</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="spirv_reflect.h">
@@ -163,6 +166,9 @@
     </ClInclude>
     <ClInclude Include="ComputePipeline.h">
       <Filter>Header Files\Internals</Filter>
+    </ClInclude>
+    <ClInclude Include="Camera.h">
+      <Filter>Header Files\Internals\VulkanCore</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

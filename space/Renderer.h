@@ -25,6 +25,7 @@ namespace Core
     class Material;
     class Mesh;
     class Font;
+    class Camera;
 
     struct BatchKey
     {
@@ -55,14 +56,6 @@ namespace std
 
 namespace Core
 {
-
-    struct Camera
-    {
-        glm::mat4 view{ 1.0f };
-        glm::mat4 projection{ 1.0f };
-        glm::vec3 position{ 0.0f, 0.0f, 0.0f };
-    };
-
     struct CameraUniforms
     {
         glm::mat4 view{ 1.0f };

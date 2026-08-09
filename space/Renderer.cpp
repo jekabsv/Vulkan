@@ -6,6 +6,7 @@
 #include "Pipeline.h"
 #include "VulkanContext.h"
 #include "Window.h"
+#include "Camera.h"
 
 #include <stdexcept>
 
@@ -203,10 +204,13 @@ namespace Core
 
     void Renderer::SetCamera(const Camera& camera)
     {
-        m_CameraUniforms.view = camera.view;
-        m_CameraUniforms.projection = camera.projection;
-        m_CameraUniforms.viewProjection = camera.projection * camera.view;
-        m_CameraUniforms.position = glm::vec4(camera.position, 1.0f);
+        const glm::mat4 view = camera.GetViewMatrix();
+        const glm::mat4& projection = camera.GetProjectionMatrix();
+
+        m_CameraUniforms.view = view;
+        m_CameraUniforms.projection = projection;
+        m_CameraUniforms.viewProjection = projection * view;
+        m_CameraUniforms.position = glm::vec4(camera.GetPosition(), 1.0f);
 
         m_CameraBuffers[m_FrameIndex].SetData(&m_CameraUniforms, sizeof(CameraUniforms));
 

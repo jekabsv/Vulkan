@@ -144,9 +144,9 @@ int main()
         instancedWoodMaterial.SetTexture("u_AlbedoMap", assets.GetTexture("wood"));
 
 
-        constexpr uint32_t particleCount = 2048;
+        constexpr uint32_t particleCount = 0;
         constexpr uint32_t particleLocalSizeX = 128;
-        constexpr float particleScale = 0.1f;
+        constexpr float particleScale = 0.05f;
 
         struct ParticlePushConstants
         {
@@ -193,14 +193,17 @@ int main()
         const float fontPixelHeight = 48.0f;
         Core::Font& textFont = assets.LoadFont("main", assets.GetPipeline("text"), "font.ttf", fontPixelHeight);
 
+
         const float textScale = 1.0f / fontPixelHeight;
 
         Core::Camera mainCamera;
-        mainCamera.position = glm::vec3(2.4f, 1.8f, 2.4f);
+        mainCamera.SetPosition(glm::vec3(2.4f, 1.8f, 2.4f));
+        mainCamera.LookAt(glm::vec3(0.0f));
 
         const auto startTime = std::chrono::high_resolution_clock::now();
 
         float prevFrameTime = 0.0f;
+        glm::vec2 lastMousePos = window.GetMousePos();
 
         while (!window.ShouldClose())
         {
@@ -215,36 +218,45 @@ int main()
             }
             if (window.IsKeyDown(Core::KeyCode::W))
             {
-                mainCamera.position.z -= 0.1f;
+                mainCamera.MoveForward(0.1f);
             }
             if (window.IsKeyDown(Core::KeyCode::S))
             {
-                mainCamera.position.z += 0.1f;
+                mainCamera.MoveForward(-0.1f);
             }
             if (window.IsKeyDown(Core::KeyCode::A))
             {
-                mainCamera.position.x -= 0.1f;
+                mainCamera.MoveRight(-0.1f);
             }
             if (window.IsKeyDown(Core::KeyCode::D))
             {
-                mainCamera.position.x += 0.1f;
+                mainCamera.MoveRight(0.1f);
             }
             if (window.IsKeyDown(Core::KeyCode::Space))
             {
-                mainCamera.position.y += 0.1f;
+                mainCamera.MoveWorld(glm::vec3(0.0f, 0.1f, 0.0f));
             }
             if (window.IsKeyDown(Core::KeyCode::Q))
             {
-                mainCamera.position.y -= 0.1f;
+                mainCamera.MoveWorld(glm::vec3(0.0f, -0.1f, 0.0f));
+            }
+
+            const glm::vec2 mousePos = window.GetMousePos();
+            const glm::vec2 mouseDelta = mousePos - lastMousePos;
+            lastMousePos = mousePos;
+
+            if (window.IsMouseButtonDown(Core::MouseButton::Right))
+            {
+                constexpr float mouseSensitivity = 0.0025f;
+                mainCamera.Yaw(-mouseDelta.x * mouseSensitivity);
+                mainCamera.Pitch(-mouseDelta.y * mouseSensitivity);
             }
 
             auto now = std::chrono::high_resolution_clock::now();
 
             float elapsed = std::chrono::duration<float>(now - startTime).count();
 
-            mainCamera.view = glm::lookAt(mainCamera.position, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-            mainCamera.projection = glm::perspective(glm::radians(50.0f), renderer.GetAspectRatio(), 0.1f, 100.0f);
-            mainCamera.projection[1][1] *= -1.0f;
+            mainCamera.SetPerspective(glm::radians(50.0f), renderer.GetAspectRatio(), 0.1f, 100.0f);
 
             const glm::mat4 transformMatrix = glm::rotate(glm::mat4(1.0f), elapsed * 0.6f, glm::vec3(0.0f, 1.0f, 0.0f));
 
@@ -291,7 +303,7 @@ int main()
                 renderer.BeginBatch();
 
 
-                constexpr int a = 100;
+                constexpr int a = 200;
 
                 for (int gridX = -1 * a; gridX <= a; gridX++)
                 {

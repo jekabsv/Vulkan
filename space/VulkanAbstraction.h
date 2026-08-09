@@ -1,5 +1,6 @@
 #include "Window.h"
 #include "VulkanContext.h"
+#include "Camera.h"
 #include "Renderer.h"
 #include "Shader.h"
 #include "Pipeline.h"
