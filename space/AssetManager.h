@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "ComputePipeline.h"
 #include "Font.h"
 #include "Material.h"
 #include "Mesh.h"
@@ -77,6 +78,14 @@ namespace Core
         bool HasPipeline(const std::string& name) const;
         bool RemovePipeline(const std::string& name);
 
+        // --- ComputePipeline ---
+        // No LoadComputePipeline: built from a single compute Shader, there's no serialized
+        // pipeline format, only construct-from-code (same rationale as GraphicsPipeline above).
+        const ComputePipeline& GetComputePipeline(const std::string& name) const;
+        ComputePipeline& SetComputePipeline(const std::string& name, ComputePipeline&& pipeline);
+        bool HasComputePipeline(const std::string& name) const;
+        bool RemoveComputePipeline(const std::string& name);
+
         // --- Sound ---
         // TODO: uncomment once a Sound class exists. Deliberately left unimplemented (no .cpp
         // body at all) until then - only the intended API shape is sketched here.
@@ -96,6 +105,7 @@ namespace Core
         std::unordered_map<std::string, Material> m_Materials;
         std::unordered_map<std::string, Shader> m_Shaders;
         std::unordered_map<std::string, GraphicsPipeline> m_Pipelines;
+        std::unordered_map<std::string, ComputePipeline> m_ComputePipelines;
 
         // std::unordered_map<std::string, Sound> m_Sounds; // TODO: uncomment once Sound exists.
     };

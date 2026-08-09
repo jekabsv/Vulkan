@@ -42,7 +42,10 @@ namespace Core
             return VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
         }
 
-        return VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        // Staging buffers move data across the host/device boundary in either direction (upload
+        // via MemoryUsage::HostVisible, readback via MemoryUsage::HostReadback), so they need both
+        // transfer usages.
+        return VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     }
 
     Buffer::Buffer(VulkanContext& context, VkDeviceSize size, BufferType type, MemoryUsage memoryUsage)

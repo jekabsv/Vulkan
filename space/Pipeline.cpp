@@ -41,24 +41,12 @@ namespace Core
         return *this;
     }
 
-    GraphicsPipeline::GraphicsPipeline(VulkanContext& context, const std::vector<const Shader*>& shaders, const PipelineConfig& config)
+    Pipeline::Pipeline(VulkanContext& context)
         : m_Context(&context)
     {
-        if (shaders.empty())
-        {
-            throw std::runtime_error("A graphics pipeline needs at least one shader stage");
-        }
-
-        CreateLayout(shaders);
-        CreatePipeline(shaders, config);
     }
 
-    GraphicsPipeline::~GraphicsPipeline()
-    {
-        Destroy();
-    }
-
-    GraphicsPipeline::GraphicsPipeline(GraphicsPipeline&& other) noexcept
+    Pipeline::Pipeline(Pipeline&& other) noexcept
         : m_Context(other.m_Context)
         , m_Pipeline(other.m_Pipeline)
         , m_Layout(other.m_Layout)
@@ -71,7 +59,7 @@ namespace Core
         other.m_Layout = VK_NULL_HANDLE;
     }
 
-    GraphicsPipeline& GraphicsPipeline::operator=(GraphicsPipeline&& other) noexcept
+    Pipeline& Pipeline::operator=(Pipeline&& other) noexcept
     {
         if (this == &other)
         {
@@ -94,7 +82,7 @@ namespace Core
         return *this;
     }
 
-    void GraphicsPipeline::Destroy()
+    void Pipeline::Destroy()
     {
         if (m_Context == nullptr)
         {
@@ -124,7 +112,7 @@ namespace Core
         m_DescriptorSetLayouts.clear();
     }
 
-    void GraphicsPipeline::CreateLayout(const std::vector<const Shader*>& shaders)
+    void Pipeline::CreateLayout(const std::vector<const Shader*>& shaders)
     {
         std::map<uint32_t, std::map<uint32_t, VkDescriptorSetLayoutBinding>> merged;
 
@@ -267,6 +255,165 @@ namespace Core
         }
 
         CheckResult(vkCreatePipelineLayout(m_Context->GetDevice(), &layoutInfo, nullptr, &m_Layout), "Failed to create pipeline layout");
+    }
+
+    void Pipeline::Bind(VkCommandBuffer commandBuffer) const
+    {
+        vkCmdBindPipeline(commandBuffer, GetBindPoint(), m_Pipeline);
+    }
+
+    void Pipeline::BindDescriptorSets(VkCommandBuffer commandBuffer, uint32_t firstSet, const std::vector<VkDescriptorSet>& sets) const
+    {
+        if (sets.empty())
+        {
+            return;
+        }
+
+        vkCmdBindDescriptorSets(
+            commandBuffer,
+            GetBindPoint(),
+            m_Layout,
+            firstSet,
+            static_cast<uint32_t>(sets.size()),
+            sets.data(),
+            0,
+            nullptr);
+    }
+
+    void Pipeline::PushConstants(VkCommandBuffer commandBuffer, uint32_t offset, uint32_t size, const void* data) const
+    {
+        if (m_PushConstantRange.size == 0)
+        {
+            throw std::runtime_error("Pipeline has no push constant range");
+        }
+
+        vkCmdPushConstants(commandBuffer, m_Layout, m_PushConstantRange.stageFlags, offset, size, data);
+    }
+
+    bool Pipeline::FindDescriptorType(uint32_t set, uint32_t binding, VkDescriptorType& outType) const
+    {
+        for (const ShaderBinding& known : m_Bindings)
+        {
+            if (known.set == set && known.binding == binding)
+            {
+                outType = known.descriptorType;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    const ShaderBinding* Pipeline::FindBinding(uint32_t set, uint32_t binding) const
+    {
+        for (const ShaderBinding& known : m_Bindings)
+        {
+            if (known.set == set && known.binding == binding)
+            {
+                return &known;
+            }
+        }
+
+        return nullptr;
+    }
+
+    const ShaderBinding* Pipeline::FindBindingByName(uint32_t set, const std::string& name) const
+    {
+        for (const ShaderBinding& known : m_Bindings)
+        {
+            if (known.set == set && known.name == name)
+            {
+                return &known;
+            }
+        }
+
+        return nullptr;
+    }
+
+    const ShaderBinding* Pipeline::FindUniformBlock(uint32_t set) const
+    {
+        for (const ShaderBinding& known : m_Bindings)
+        {
+            if (known.set != set)
+            {
+                continue;
+            }
+
+            if (known.descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+            {
+                return &known;
+            }
+        }
+
+        return nullptr;
+    }
+
+    bool Pipeline::FindMember(uint32_t set, const std::string& memberName, uint32_t& outBinding, uint32_t& outOffset, uint32_t& outSize) const
+    {
+        for (const ShaderBinding& known : m_Bindings)
+        {
+            if (known.set != set)
+            {
+                continue;
+            }
+
+            for (const ShaderBlockMember& member : known.members)
+            {
+                if (member.name == memberName)
+                {
+                    outBinding = known.binding;
+                    outOffset = member.offset;
+                    outSize = member.size;
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    VkDescriptorSetLayout Pipeline::GetDescriptorSetLayout(uint32_t set) const
+    {
+        if (set >= m_DescriptorSetLayouts.size())
+        {
+            return VK_NULL_HANDLE;
+        }
+
+        return m_DescriptorSetLayouts[set];
+    }
+
+    GraphicsPipeline::GraphicsPipeline(VulkanContext& context, const std::vector<const Shader*>& shaders, const PipelineConfig& config)
+        : Pipeline(context)
+    {
+        if (shaders.empty())
+        {
+            throw std::runtime_error("A graphics pipeline needs at least one shader stage");
+        }
+
+        CreateLayout(shaders);
+        CreatePipeline(shaders, config);
+    }
+
+    GraphicsPipeline::~GraphicsPipeline()
+    {
+        Destroy();
+    }
+
+    GraphicsPipeline::GraphicsPipeline(GraphicsPipeline&& other) noexcept
+        : Pipeline(std::move(other))
+    {
+    }
+
+    GraphicsPipeline& GraphicsPipeline::operator=(GraphicsPipeline&& other) noexcept
+    {
+        if (this == &other)
+        {
+            return *this;
+        }
+
+        Pipeline::operator=(std::move(other));
+
+        return *this;
     }
 
     VkPipelineColorBlendAttachmentState GraphicsPipeline::MakeBlendAttachment(BlendMode mode)
@@ -427,131 +574,6 @@ namespace Core
         CheckResult(
             vkCreateGraphicsPipelines(m_Context->GetDevice(), VK_NULL_HANDLE, 1, &createInfo, nullptr, &m_Pipeline),
             "Failed to create graphics pipeline");
-    }
-
-    void GraphicsPipeline::Bind(VkCommandBuffer commandBuffer) const
-    {
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline);
-    }
-
-    void GraphicsPipeline::BindDescriptorSets(VkCommandBuffer commandBuffer, uint32_t firstSet, const std::vector<VkDescriptorSet>& sets) const
-    {
-        if (sets.empty())
-        {
-            return;
-        }
-
-        vkCmdBindDescriptorSets(
-            commandBuffer,
-            VK_PIPELINE_BIND_POINT_GRAPHICS,
-            m_Layout,
-            firstSet,
-            static_cast<uint32_t>(sets.size()),
-            sets.data(),
-            0,
-            nullptr);
-    }
-
-    void GraphicsPipeline::PushConstants(VkCommandBuffer commandBuffer, uint32_t offset, uint32_t size, const void* data) const
-    {
-        if (m_PushConstantRange.size == 0)
-        {
-            throw std::runtime_error("Pipeline has no push constant range");
-        }
-
-        vkCmdPushConstants(commandBuffer, m_Layout, m_PushConstantRange.stageFlags, offset, size, data);
-    }
-
-    bool GraphicsPipeline::FindDescriptorType(uint32_t set, uint32_t binding, VkDescriptorType& outType) const
-    {
-        for (const ShaderBinding& known : m_Bindings)
-        {
-            if (known.set == set && known.binding == binding)
-            {
-                outType = known.descriptorType;
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    const ShaderBinding* GraphicsPipeline::FindBinding(uint32_t set, uint32_t binding) const
-    {
-        for (const ShaderBinding& known : m_Bindings)
-        {
-            if (known.set == set && known.binding == binding)
-            {
-                return &known;
-            }
-        }
-
-        return nullptr;
-    }
-
-    const ShaderBinding* GraphicsPipeline::FindBindingByName(uint32_t set, const std::string& name) const
-    {
-        for (const ShaderBinding& known : m_Bindings)
-        {
-            if (known.set == set && known.name == name)
-            {
-                return &known;
-            }
-        }
-
-        return nullptr;
-    }
-
-    const ShaderBinding* GraphicsPipeline::FindUniformBlock(uint32_t set) const
-    {
-        for (const ShaderBinding& known : m_Bindings)
-        {
-            if (known.set != set)
-            {
-                continue;
-            }
-
-            if (known.descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-            {
-                return &known;
-            }
-        }
-
-        return nullptr;
-    }
-
-    bool GraphicsPipeline::FindMember(uint32_t set, const std::string& memberName, uint32_t& outBinding, uint32_t& outOffset, uint32_t& outSize) const
-    {
-        for (const ShaderBinding& known : m_Bindings)
-        {
-            if (known.set != set)
-            {
-                continue;
-            }
-
-            for (const ShaderBlockMember& member : known.members)
-            {
-                if (member.name == memberName)
-                {
-                    outBinding = known.binding;
-                    outOffset = member.offset;
-                    outSize = member.size;
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    VkDescriptorSetLayout GraphicsPipeline::GetDescriptorSetLayout(uint32_t set) const
-    {
-        if (set >= m_DescriptorSetLayouts.size())
-        {
-            return VK_NULL_HANDLE;
-        }
-
-        return m_DescriptorSetLayouts[set];
     }
 
 } // namespace Core

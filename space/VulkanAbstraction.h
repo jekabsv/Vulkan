@@ -3,6 +3,7 @@
 #include "Renderer.h"
 #include "Shader.h"
 #include "Pipeline.h"
+#include "ComputePipeline.h"
 #include "Mesh.h"
 #include "Material.h"
 #include "Texture.h"

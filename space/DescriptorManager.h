@@ -9,7 +9,7 @@ namespace Core
 {
 
     class VulkanContext;
-    class GraphicsPipeline;
+    class Pipeline;
     class Buffer;
     class Texture;
     class DescriptorManager;
@@ -17,7 +17,7 @@ namespace Core
     class DescriptorWriter
     {
     public:
-        DescriptorWriter(DescriptorManager& manager, const GraphicsPipeline& pipeline, uint32_t set);
+        DescriptorWriter(DescriptorManager& manager, const Pipeline& pipeline, uint32_t set);
 
         DescriptorWriter& WriteBuffer(uint32_t binding, const Buffer& buffer);
         DescriptorWriter& WriteBuffer(uint32_t binding, const Buffer& buffer, VkDeviceSize size, VkDeviceSize offset);
@@ -40,7 +40,7 @@ namespace Core
 
     private:
         DescriptorManager* m_Manager{ nullptr };
-        const GraphicsPipeline* m_Pipeline{ nullptr };
+        const Pipeline* m_Pipeline{ nullptr };
         uint32_t m_Set{ 0 };
 
         std::vector<PendingWrite> m_Writes;
@@ -60,7 +60,7 @@ namespace Core
         DescriptorManager(DescriptorManager&& other) noexcept;
         DescriptorManager& operator=(DescriptorManager&& other) noexcept;
 
-        DescriptorWriter Begin(const GraphicsPipeline& pipeline, uint32_t set);
+        DescriptorWriter Begin(const Pipeline& pipeline, uint32_t set);
 
         VkDescriptorSet Allocate(VkDescriptorSetLayout layout);
         void ResetPools();

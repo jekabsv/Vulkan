@@ -102,6 +102,9 @@
     <ClCompile Include="VulkanAbstraction.h">
       <Filter>Header Files</Filter>
     </ClCompile>
+    <ClCompile Include="ComputePipeline.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="spirv_reflect.h">
@@ -158,6 +161,9 @@
     <ClInclude Include="stb_truetype.h">
       <Filter>Header Files\Internals\Dependancies</Filter>
     </ClInclude>
+    <ClInclude Include="ComputePipeline.h">
+      <Filter>Header Files\Internals</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="triangle.vert">
@@ -179,6 +185,9 @@
       <Filter>Resource Files</Filter>
     </None>
     <None Include="text_instanced.frag">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="particles.comp">
       <Filter>Resource Files</Filter>
     </None>
   </ItemGroup>

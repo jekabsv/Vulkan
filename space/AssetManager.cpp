@@ -289,6 +289,35 @@ namespace Core
         return m_Pipelines.erase(name) > 0;
     }
 
+    // --- ComputePipeline ---
+
+    const ComputePipeline& AssetManager::GetComputePipeline(const std::string& name) const
+    {
+        auto it = m_ComputePipelines.find(name);
+
+        if (it == m_ComputePipelines.end())
+        {
+            throw std::runtime_error("Compute pipeline asset not found: " + name);
+        }
+
+        return it->second;
+    }
+
+    ComputePipeline& AssetManager::SetComputePipeline(const std::string& name, ComputePipeline&& pipeline)
+    {
+        return m_ComputePipelines.insert_or_assign(name, std::move(pipeline)).first->second;
+    }
+
+    bool AssetManager::HasComputePipeline(const std::string& name) const
+    {
+        return m_ComputePipelines.find(name) != m_ComputePipelines.end();
+    }
+
+    bool AssetManager::RemoveComputePipeline(const std::string& name)
+    {
+        return m_ComputePipelines.erase(name) > 0;
+    }
+
     // --- Sound ---
     // TODO: uncomment once a Sound class exists (see AssetManager.h) - no implementation until then.
 

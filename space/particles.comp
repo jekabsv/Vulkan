@@ -1,0 +1,40 @@
+#version 450
+
+// glslc particles.comp -o particles.spv
+
+layout(local_size_x = 64) in;
+
+struct Particle
+{
+    vec4 position;
+};
+
+layout(std430, set = 0, binding = 0) buffer ParticleBuffer
+{
+    Particle particles[];
+};
+
+layout(push_constant) uniform PushConstants
+{
+    float time;
+    uint count;
+} pc;
+
+void main()
+{
+    uint index = gl_GlobalInvocationID.x;
+
+    if (index >= pc.count)
+    {
+        return;
+    }
+
+    float angle = float(index) * 0.15 + pc.time;
+    float radius = 0.01 + float(index) * 0.01;
+
+    particles[index].position = vec4(
+        radius * cos(angle),
+        float(index) * 0.002,
+        radius * sin(angle),
+        1.0);
+}

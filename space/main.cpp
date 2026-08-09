@@ -9,6 +9,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <iostream>
+#include <optional>
 #include <vector>
 #include <string>
 
@@ -142,6 +143,52 @@ int main()
         instancedWoodMaterial.SetVec2("u_Tiling", glm::vec2(1.0f, 1.0f));
         instancedWoodMaterial.SetTexture("u_AlbedoMap", assets.GetTexture("wood"));
 
+
+        constexpr uint32_t particleCount = 2048;
+        constexpr uint32_t particleLocalSizeX = 128;
+        constexpr float particleScale = 0.1f;
+
+        struct ParticlePushConstants
+        {
+            float time;
+            uint32_t count;
+        };
+
+        bool particlesEnabled = false;
+        std::optional<Core::Buffer> particleBuffer;
+        std::optional<Core::Buffer> particleReadback;
+        std::optional<Core::DescriptorManager> particleDescriptors;
+        VkDescriptorSet particleDescriptorSet = VK_NULL_HANDLE;
+        Core::Material* particleMaterial = nullptr;
+
+        try
+        {
+            assets.LoadShader("particles_comp", "particles.spv");
+            assets.SetComputePipeline("particles", Core::ComputePipeline(context, assets.GetShader("particles_comp")));
+
+            particleBuffer.emplace(context, sizeof(glm::vec4) * particleCount, Core::BufferType::Storage, Core::MemoryUsage::DeviceLocal);
+            particleReadback.emplace(context, particleBuffer->GetSize(), Core::BufferType::Staging, Core::MemoryUsage::HostReadback);
+            particleDescriptors.emplace(context, 1);
+
+            Core::DescriptorWriter particleWriter = particleDescriptors->Begin(assets.GetComputePipeline("particles"), 0);
+            particleWriter.WriteBuffer(0, *particleBuffer);
+            particleDescriptorSet = particleWriter.Build();
+
+            particleMaterial = &assets.SetMaterial("particles", renderer.CreateMaterial(assets.GetPipeline("instanced")));
+            particleMaterial->SetVec3("u_AlbedoColor", glm::vec3(1.0f, 0.35f, 0.15f));
+            particleMaterial->SetFloat("u_Roughness", 1.0f);
+            particleMaterial->SetFloat("u_Metallic", 0.0f);
+            particleMaterial->SetVec2("u_Tiling", glm::vec2(1.0f, 1.0f));
+            particleMaterial->SetTexture("u_AlbedoMap", assets.GetTexture("wood"));
+
+            particlesEnabled = true;
+        }
+        catch (const std::exception& error)
+        {
+            std::cerr << "[Particles] Skipped (compile particles.comp to particles.spv with glslc to enable): "
+                << error.what() << std::endl;
+        }
+
         // --- Font ---
         const float fontPixelHeight = 48.0f;
         Core::Font& textFont = assets.LoadFont("main", assets.GetPipeline("text"), "font.ttf", fontPixelHeight);
@@ -174,25 +221,25 @@ int main()
             {
                 mainCamera.position.z += 0.1f;
             }
-			if (window.IsKeyDown(Core::KeyCode::A))
-			{
-				mainCamera.position.x -= 0.1f;
-			}
-			if (window.IsKeyDown(Core::KeyCode::D))
-			{
-				mainCamera.position.x += 0.1f;
-			}
-			if (window.IsKeyDown(Core::KeyCode::Space))
-			{
-				mainCamera.position.y += 0.1f;
-			}
-			if (window.IsKeyDown(Core::KeyCode::Q))
-			{
-				mainCamera.position.y -= 0.1f;
-			}
+            if (window.IsKeyDown(Core::KeyCode::A))
+            {
+                mainCamera.position.x -= 0.1f;
+            }
+            if (window.IsKeyDown(Core::KeyCode::D))
+            {
+                mainCamera.position.x += 0.1f;
+            }
+            if (window.IsKeyDown(Core::KeyCode::Space))
+            {
+                mainCamera.position.y += 0.1f;
+            }
+            if (window.IsKeyDown(Core::KeyCode::Q))
+            {
+                mainCamera.position.y -= 0.1f;
+            }
 
             auto now = std::chrono::high_resolution_clock::now();
-            
+
             float elapsed = std::chrono::duration<float>(now - startTime).count();
 
             mainCamera.view = glm::lookAt(mainCamera.position, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -200,6 +247,38 @@ int main()
             mainCamera.projection[1][1] *= -1.0f;
 
             const glm::mat4 transformMatrix = glm::rotate(glm::mat4(1.0f), elapsed * 0.6f, glm::vec3(0.0f, 1.0f, 0.0f));
+
+            std::vector<glm::vec4> particlePositions;
+
+            if (particlesEnabled)
+            {
+                ParticlePushConstants particlePushConstants{ elapsed, particleCount };
+
+                VkCommandBuffer computeCommandBuffer = context.BeginSingleTimeCommands();
+
+                const Core::ComputePipeline& particlePipeline = assets.GetComputePipeline("particles");
+                particlePipeline.Bind(computeCommandBuffer);
+                particlePipeline.BindDescriptorSets(computeCommandBuffer, 0, { particleDescriptorSet });
+                particlePipeline.PushConstants(computeCommandBuffer, 0, sizeof(particlePushConstants), &particlePushConstants);
+                particlePipeline.Dispatch(computeCommandBuffer, (particleCount + particleLocalSizeX - 1) / particleLocalSizeX);
+
+                Core::ComputePipeline::BufferBarrier(
+                    computeCommandBuffer,
+                    *particleBuffer,
+                    VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
+                    VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT);
+
+                VkBufferCopy copyRegion{};
+                copyRegion.size = particleBuffer->GetSize();
+                vkCmdCopyBuffer(computeCommandBuffer, particleBuffer->GetHandle(), particleReadback->GetHandle(), 1, &copyRegion);
+
+                context.EndSingleTimeCommands(computeCommandBuffer);
+
+                particleReadback->Invalidate(particleReadback->GetSize(), 0);
+
+                const glm::vec4* positions = static_cast<const glm::vec4*>(particleReadback->GetMappedData());
+                particlePositions.assign(positions, positions + particleCount);
+            }
 
             if (renderer.BeginFrame())
             {
@@ -212,11 +291,11 @@ int main()
                 renderer.BeginBatch();
 
 
-				constexpr int a = 100;
+                constexpr int a = 100;
 
-                for (int gridX = -1*a; gridX <= a; gridX++)
+                for (int gridX = -1 * a; gridX <= a; gridX++)
                 {
-                    for (int gridZ = -1*a; gridZ <= a; gridZ++)
+                    for (int gridZ = -1 * a; gridZ <= a; gridZ++)
                     {
                         const glm::vec3 offset(static_cast<float>(gridX) * 1.5f, 0.0f, static_cast<float>(gridZ) * 1.5f);
                         const glm::mat4 instanceTransform = glm::translate(glm::mat4(1.0f), offset) * transformMatrix;
@@ -224,8 +303,20 @@ int main()
                     }
                 }
 
+                if (particlesEnabled)
+                {
+                    for (const glm::vec4& position : particlePositions)
+                    {
+                        const glm::mat4 particleTransform = glm::scale(
+                            glm::translate(glm::mat4(1.0f), glm::vec3(position)),
+                            glm::vec3(particleScale));
+
+                        renderer.Submit(assets.GetMesh("cube"), *particleMaterial, particleTransform);
+                    }
+                }
+
                 renderer.SubmitText(textFont, "Hello " + std::to_string(4 * a * a) + " cubes", glm::vec3(-2.0f, 2.5f, 0.0f), textScale, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
-				renderer.SubmitText(textFont, "FPS: " + std::to_string(1.0f / std::max(0.0001f, prevFrameTime)) + " FPS", glm::vec3(-2.0f, 1.5f, 0.0f), textScale, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+                renderer.SubmitText(textFont, "FPS: " + std::to_string(1.0f / std::max(0.0001f, prevFrameTime)) + " FPS", glm::vec3(-2.0f, 1.5f, 0.0f), textScale, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 
                 renderer.FlushBatch();
 
@@ -234,7 +325,7 @@ int main()
 
                 now = std::chrono::high_resolution_clock::now();
                 prevFrameTime = std::chrono::duration<float>(now - FrameStart).count();
-    
+
             }
         }
 

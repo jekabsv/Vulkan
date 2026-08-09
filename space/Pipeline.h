@@ -57,16 +57,13 @@ namespace Core
         std::vector<VkDynamicState> dynamicStates{ VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
     };
 
-    class GraphicsPipeline
+    class Pipeline
     {
     public:
-        GraphicsPipeline(VulkanContext& context, const std::vector<const Shader*>& shaders, const PipelineConfig& config);
-        ~GraphicsPipeline();
+        virtual ~Pipeline() = default;
 
-        GraphicsPipeline(const GraphicsPipeline&) = delete;
-        GraphicsPipeline& operator=(const GraphicsPipeline&) = delete;
-        GraphicsPipeline(GraphicsPipeline&& other) noexcept;
-        GraphicsPipeline& operator=(GraphicsPipeline&& other) noexcept;
+        Pipeline(const Pipeline&) = delete;
+        Pipeline& operator=(const Pipeline&) = delete;
 
         void Bind(VkCommandBuffer commandBuffer) const;
         void BindDescriptorSets(VkCommandBuffer commandBuffer, uint32_t firstSet, const std::vector<VkDescriptorSet>& sets) const;
@@ -84,20 +81,44 @@ namespace Core
         bool FindMember(uint32_t set, const std::string& memberName, uint32_t& outBinding, uint32_t& outOffset, uint32_t& outSize) const;
         bool HasPushConstants() const { return m_PushConstantRange.size > 0; }
 
-    private:
+    protected:
+        explicit Pipeline(VulkanContext& context);
+
+        Pipeline(Pipeline&& other) noexcept;
+        Pipeline& operator=(Pipeline&& other) noexcept;
+
         void CreateLayout(const std::vector<const Shader*>& shaders);
-        void CreatePipeline(const std::vector<const Shader*>& shaders, const PipelineConfig& config);
         void Destroy();
 
-        static VkPipelineColorBlendAttachmentState MakeBlendAttachment(BlendMode mode);
+        virtual VkPipelineBindPoint GetBindPoint() const = 0;
 
-    private:
+    protected:
         VulkanContext* m_Context{ nullptr };
         VkPipeline m_Pipeline{ VK_NULL_HANDLE };
         VkPipelineLayout m_Layout{ VK_NULL_HANDLE };
         std::vector<VkDescriptorSetLayout> m_DescriptorSetLayouts;
         std::vector<ShaderBinding> m_Bindings;
         VkPushConstantRange m_PushConstantRange{};
+    };
+
+    class GraphicsPipeline : public Pipeline
+    {
+    public:
+        GraphicsPipeline(VulkanContext& context, const std::vector<const Shader*>& shaders, const PipelineConfig& config);
+        ~GraphicsPipeline() override;
+
+        GraphicsPipeline(const GraphicsPipeline&) = delete;
+        GraphicsPipeline& operator=(const GraphicsPipeline&) = delete;
+        GraphicsPipeline(GraphicsPipeline&& other) noexcept;
+        GraphicsPipeline& operator=(GraphicsPipeline&& other) noexcept;
+
+    protected:
+        VkPipelineBindPoint GetBindPoint() const override { return VK_PIPELINE_BIND_POINT_GRAPHICS; }
+
+    private:
+        void CreatePipeline(const std::vector<const Shader*>& shaders, const PipelineConfig& config);
+
+        static VkPipelineColorBlendAttachmentState MakeBlendAttachment(BlendMode mode);
     };
 
 } // namespace Core

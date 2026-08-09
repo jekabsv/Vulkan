@@ -151,6 +151,7 @@
     <ClCompile Include="AssetManager.cpp" />
     <ClCompile Include="Batch.cpp" />
     <ClCompile Include="Buffer.cpp" />
+    <ClCompile Include="ComputePipeline.cpp" />
     <ClCompile Include="DescriptorManager.cpp" />
     <ClCompile Include="Font.cpp" />
     <ClCompile Include="Material.cpp" />
@@ -174,6 +175,7 @@
     <ClInclude Include="AssetManager.h" />
     <ClInclude Include="Batch.h" />
     <ClInclude Include="Buffer.h" />
+    <ClInclude Include="ComputePipeline.h" />
     <ClInclude Include="DescriptorManager.h" />
     <ClInclude Include="Font.h" />
     <ClInclude Include="Material.h" />
@@ -191,6 +193,7 @@
     <ClInclude Include="Window.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="particles.comp" />
     <None Include="text.frag" />
     <None Include="text.vert" />
     <None Include="text_instanced.frag" />

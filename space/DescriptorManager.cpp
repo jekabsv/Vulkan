@@ -219,12 +219,12 @@ namespace Core
         }
     }
 
-    DescriptorWriter DescriptorManager::Begin(const GraphicsPipeline& pipeline, uint32_t set)
+    DescriptorWriter DescriptorManager::Begin(const Pipeline& pipeline, uint32_t set)
     {
         return DescriptorWriter(*this, pipeline, set);
     }
 
-    DescriptorWriter::DescriptorWriter(DescriptorManager& manager, const GraphicsPipeline& pipeline, uint32_t set)
+    DescriptorWriter::DescriptorWriter(DescriptorManager& manager, const Pipeline& pipeline, uint32_t set)
         : m_Manager(&manager)
         , m_Pipeline(&pipeline)
         , m_Set(set)
