@@ -46,6 +46,8 @@ namespace Core
             case GLFW_KEY_LEFT:      return KeyCode::Left;
             case GLFW_KEY_DOWN:      return KeyCode::Down;
             case GLFW_KEY_UP:        return KeyCode::Up;
+            case GLFW_KEY_LEFT_BRACKET:  return KeyCode::LeftBracket;
+            case GLFW_KEY_RIGHT_BRACKET: return KeyCode::RightBracket;
             default:                 return KeyCode::Unknown;
             }
         }
@@ -62,7 +64,7 @@ namespace Core
         }
     }
 
-    Window::Window(uint32_t width, uint32_t height, const std::string& title):
+    Window::Window(uint32_t width, uint32_t height, const std::string& title) :
         m_Width(width), m_Height(height), m_Title(title)
     {
         if (s_WindowCount == 0)

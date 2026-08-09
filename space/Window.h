@@ -21,6 +21,7 @@ namespace Core
         Num0, Num1, Num2, Num3, Num4, Num5, Num6, Num7, Num8, Num9,
         Escape, Enter, Tab, Backspace, Insert, Delete,
         Right, Left, Down, Up,
+        LeftBracket, RightBracket,
         Count
     };
 

@@ -154,9 +154,13 @@
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="ComputePipeline.cpp" />
     <ClCompile Include="DescriptorManager.cpp" />
+    <ClCompile Include="DigitEditor.cpp" />
     <ClCompile Include="Font.cpp" />
     <ClCompile Include="Material.cpp" />
     <ClCompile Include="Mesh.cpp" />
+    <ClCompile Include="MnistData.cpp" />
+    <ClCompile Include="NetworkVisualizer.cpp" />
+    <ClCompile Include="NeuralNetwork.cpp" />
     <ClCompile Include="Pipeline.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="RenderPass.cpp" />
@@ -179,9 +183,13 @@
     <ClInclude Include="Camera.h" />
     <ClInclude Include="ComputePipeline.h" />
     <ClInclude Include="DescriptorManager.h" />
+    <ClInclude Include="DigitEditor.h" />
     <ClInclude Include="Font.h" />
     <ClInclude Include="Material.h" />
     <ClInclude Include="Mesh.h" />
+    <ClInclude Include="MnistData.h" />
+    <ClInclude Include="NetworkVisualizer.h" />
+    <ClInclude Include="NeuralNetwork.h" />
     <ClInclude Include="Pipeline.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="RenderPass.h" />
