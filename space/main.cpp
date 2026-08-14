@@ -39,7 +39,7 @@ constexpr int kEpochs = 6;
 constexpr float kLearningRate = 0.1f;
 
 // --- Visualization ---
-constexpr int kVisibleNeuronsPerLayer = 25;
+constexpr int kVisibleNeuronsPerLayer = 784;
 constexpr int kRenderEdges = 1;
 constexpr float kEdgeRenderPercentage = 0.2f;
 
