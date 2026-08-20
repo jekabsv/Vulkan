@@ -17,6 +17,8 @@
 
 namespace
 {
+
+
     std::vector<uint8_t> MakeCheckerPixels(uint32_t size, uint32_t squares)
     {
         std::vector<uint8_t> pixels(static_cast<size_t>(size) * size * 4);

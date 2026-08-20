@@ -40,7 +40,9 @@ namespace Core
 
         static Mesh CreateCube(VulkanContext& context);
         static Mesh CreateQuad(VulkanContext& context);
+		static Mesh CreateSphere(VulkanContext& context, float radius, uint32_t sectorCount, uint32_t stackCount);
         static Mesh CreateCustom(VulkanContext& context, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices);
+    
 
     private:
         std::vector<Buffer> m_VertexBuffer;

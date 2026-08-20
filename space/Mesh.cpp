@@ -5,8 +5,12 @@
 #include <cstddef>
 #include <stdexcept>
 
+
+#include <glm/gtc/matrix_transform.hpp>
+
 namespace Core
 {
+
 
     VertexInputLayout Vertex::GetLayout()
     {
@@ -125,6 +129,67 @@ namespace Core
 
         return Mesh(context, vertices, indices);
     }
+
+    Mesh Mesh::CreateSphere(VulkanContext& context, float radius, uint32_t sectorCount, uint32_t stackCount)
+    {
+        sectorCount = std::max(sectorCount, 3u);
+        stackCount = std::max(stackCount, 2u);
+
+        std::vector<Vertex> vertices;
+        std::vector<uint32_t> indices;
+
+        const uint32_t ringSize = sectorCount + 1;
+        vertices.reserve(ringSize * (stackCount + 1));
+        indices.reserve(sectorCount * stackCount * 6);
+
+        for (uint32_t stack = 0; stack <= stackCount; stack++)
+        {
+            const float v = static_cast<float>(stack) / static_cast<float>(stackCount);
+            const float phi = v * glm::pi<float>();
+            const float sinPhi = std::sin(phi);
+            const float cosPhi = std::cos(phi);
+
+            for (uint32_t sector = 0; sector <= sectorCount; sector++)
+            {
+                const float u = static_cast<float>(sector) / static_cast<float>(sectorCount);
+                const float theta = u * glm::two_pi<float>();
+
+                Vertex vertex;
+                vertex.normal = { sinPhi * std::cos(theta), cosPhi, sinPhi * std::sin(theta) };
+                vertex.position = vertex.normal * radius;
+                vertex.uv = { u, v };
+                vertices.push_back(vertex);
+            }
+        }
+
+        for (uint32_t stack = 0; stack < stackCount; stack++)
+        {
+            for (uint32_t sector = 0; sector < sectorCount; sector++)
+            {
+                const uint32_t topLeft = stack * ringSize + sector;
+                const uint32_t topRight = topLeft + 1;
+                const uint32_t bottomLeft = topLeft + ringSize;
+                const uint32_t bottomRight = bottomLeft + 1;
+
+                if (stack != stackCount - 1)
+                {
+                    indices.push_back(bottomRight);
+                    indices.push_back(bottomLeft);
+                    indices.push_back(topLeft);
+                }
+
+                if (stack != 0)
+                {
+                    indices.push_back(topLeft);
+                    indices.push_back(topRight);
+                    indices.push_back(bottomRight);
+                }
+            }
+        }
+
+        return Mesh(context, vertices, indices);
+    }
+
 
     Mesh Mesh::CreateCustom(VulkanContext& context, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices)
     {
