@@ -68,6 +68,12 @@ namespace Core
         VkSemaphore GetRenderFinishedSemaphore(uint32_t imageIndex) const { return m_RenderFinishedSemaphores[imageIndex]; }
         VkFence GetInFlightFence() const { return m_InFlightFences[m_CurrentFrame]; }
 
+        // Fence of the submission SubmitAndPresent last issued. GetInFlightFence() cannot be used
+        // for this: SubmitAndPresent advances m_CurrentFrame before returning, so afterwards it
+        // names the *next* frame. Wait on this one to know the last submitted work has completed
+        // (readback copies recorded into that command buffer, for instance).
+        VkFence GetLastSubmittedFence() const { return m_LastSubmittedFence; }
+
     private:
         void Initialize();
         void CreateSwapchain(VkSwapchainKHR oldSwapchain);
@@ -100,6 +106,7 @@ namespace Core
         std::vector<VkSemaphore> m_RenderFinishedSemaphores;
         std::vector<VkFence> m_InFlightFences;
         std::vector<VkFence> m_ImagesInFlight;
+        VkFence m_LastSubmittedFence{ VK_NULL_HANDLE };
 
         uint32_t m_CurrentFrame{ 0 };
     };

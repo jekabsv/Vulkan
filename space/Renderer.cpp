@@ -245,11 +245,11 @@ namespace Core
         DrawMesh(mesh, material, &transform, sizeof(glm::mat4));
     }
 
-    void Renderer::DrawMesh(const Mesh& mesh, Material& material, const void* pushConstantData, uint32_t pushConstantSize)
+    VkCommandBuffer Renderer::PrepareDraw(const Mesh& mesh, Material& material, const void* pushConstantData, uint32_t pushConstantSize)
     {
         if (!m_FrameStarted)
         {
-            throw std::runtime_error("DrawMesh called outside of a started frame");
+            throw std::runtime_error("Draw call issued outside of a started frame");
         }
 
         VkCommandBuffer commandBuffer = m_CommandBuffers[m_FrameIndex];
@@ -280,7 +280,29 @@ namespace Core
         }
 
         mesh.Bind(commandBuffer);
+        return commandBuffer;
+    }
+
+    void Renderer::DrawMesh(const Mesh& mesh, Material& material, const void* pushConstantData, uint32_t pushConstantSize)
+    {
+        VkCommandBuffer commandBuffer = PrepareDraw(mesh, material, pushConstantData, pushConstantSize);
         vkCmdDrawIndexed(commandBuffer, mesh.GetIndexCount(), 1, 0, 0, 0);
+    }
+
+    void Renderer::DrawMeshInstanced(const Mesh& mesh, Material& material, uint32_t instanceCount)
+    {
+        DrawMeshInstanced(mesh, material, instanceCount, nullptr, 0);
+    }
+
+    void Renderer::DrawMeshInstanced(const Mesh& mesh, Material& material, uint32_t instanceCount, const void* pushConstantData, uint32_t pushConstantSize)
+    {
+        if (instanceCount == 0)
+        {
+            return;
+        }
+
+        VkCommandBuffer commandBuffer = PrepareDraw(mesh, material, pushConstantData, pushConstantSize);
+        vkCmdDrawIndexed(commandBuffer, mesh.GetIndexCount(), instanceCount, 0, 0, 0);
     }
 
     void Renderer::BeginBatch()
@@ -431,6 +453,18 @@ namespace Core
         {
             RecreateSwapchainResources();
         }
+    }
+
+    void Renderer::WaitForLastFrame() const
+    {
+        const VkFence fence = m_Swapchain.GetLastSubmittedFence();
+
+        if (fence == VK_NULL_HANDLE)
+        {
+            return;
+        }
+
+        vkWaitForFences(m_Context->GetDevice(), 1, &fence, VK_TRUE, UINT64_MAX);
     }
 
     Material Renderer::CreateMaterial(const GraphicsPipeline& pipeline, uint32_t set)

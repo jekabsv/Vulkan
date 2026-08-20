@@ -135,6 +135,7 @@ namespace Core
         , m_GraphicsQueue(other.m_GraphicsQueue)
         , m_PresentQueue(other.m_PresentQueue)
         , m_TransferQueue(other.m_TransferQueue)
+        , m_ComputeQueue(other.m_ComputeQueue)
         , m_DeviceProperties(other.m_DeviceProperties)
         , m_EnabledFeatures(other.m_EnabledFeatures)
         , m_MemoryProperties(other.m_MemoryProperties)
@@ -152,6 +153,7 @@ namespace Core
         other.m_GraphicsQueue = VK_NULL_HANDLE;
         other.m_PresentQueue = VK_NULL_HANDLE;
         other.m_TransferQueue = VK_NULL_HANDLE;
+        other.m_ComputeQueue = VK_NULL_HANDLE;
     }
 
     VulkanContext& VulkanContext::operator=(VulkanContext&& other) noexcept
@@ -176,6 +178,7 @@ namespace Core
         m_GraphicsQueue = other.m_GraphicsQueue;
         m_PresentQueue = other.m_PresentQueue;
         m_TransferQueue = other.m_TransferQueue;
+        m_ComputeQueue = other.m_ComputeQueue;
         m_DeviceProperties = other.m_DeviceProperties;
         m_EnabledFeatures = other.m_EnabledFeatures;
         m_MemoryProperties = other.m_MemoryProperties;
@@ -193,6 +196,7 @@ namespace Core
         other.m_GraphicsQueue = VK_NULL_HANDLE;
         other.m_PresentQueue = VK_NULL_HANDLE;
         other.m_TransferQueue = VK_NULL_HANDLE;
+        other.m_ComputeQueue = VK_NULL_HANDLE;
 
         return *this;
     }
@@ -261,6 +265,7 @@ namespace Core
         m_GraphicsQueue = VK_NULL_HANDLE;
         m_PresentQueue = VK_NULL_HANDLE;
         m_TransferQueue = VK_NULL_HANDLE;
+        m_ComputeQueue = VK_NULL_HANDLE;
     }
 
     bool VulkanContext::CheckValidationLayerSupport() const
@@ -483,6 +488,11 @@ namespace Core
         std::vector<VkQueueFamilyProperties> families(familyCount);
         vkGetPhysicalDeviceQueueFamilyProperties(device, &familyCount, families.data());
 
+        // Compute-capable family with no graphics support: usable for async compute, and the
+        // only fallback if the graphics family somehow lacks VK_QUEUE_COMPUTE_BIT.
+        uint32_t asyncComputeFamily = InvalidQueueFamily;
+        bool graphicsSupportsCompute = false;
+
         for (uint32_t i = 0; i < familyCount; i++)
         {
             const VkQueueFamilyProperties& family = families[i];
@@ -492,11 +502,23 @@ namespace Core
                 continue;
             }
 
+            const bool supportsCompute = (family.queueFlags & VK_QUEUE_COMPUTE_BIT) != 0;
+
             if (family.queueFlags & VK_QUEUE_GRAPHICS_BIT)
             {
-                if (indices.graphicsFamily == InvalidQueueFamily)
+                // Vulkan only guarantees that *some* family exposes graphics and compute together,
+                // not that the first graphics family does, so prefer one that exposes both.
+                if (indices.graphicsFamily == InvalidQueueFamily || (supportsCompute && !graphicsSupportsCompute))
                 {
                     indices.graphicsFamily = i;
+                    graphicsSupportsCompute = supportsCompute;
+                }
+            }
+            else if (supportsCompute)
+            {
+                if (asyncComputeFamily == InvalidQueueFamily)
+                {
+                    asyncComputeFamily = i;
                 }
             }
 
@@ -533,6 +555,19 @@ namespace Core
             indices.transferFamily = indices.graphicsFamily;
         }
 
+        if (m_Config.requestDedicatedComputeQueue && asyncComputeFamily != InvalidQueueFamily)
+        {
+            indices.computeFamily = asyncComputeFamily;
+        }
+        else if (graphicsSupportsCompute)
+        {
+            indices.computeFamily = indices.graphicsFamily;
+        }
+        else
+        {
+            indices.computeFamily = asyncComputeFamily;
+        }
+
         return indices;
     }
 
@@ -545,6 +580,11 @@ namespace Core
         if (m_QueueFamilyIndices.HasDedicatedTransfer())
         {
             uniqueFamilies.insert(m_QueueFamilyIndices.transferFamily);
+        }
+
+        if (m_QueueFamilyIndices.HasDedicatedCompute())
+        {
+            uniqueFamilies.insert(m_QueueFamilyIndices.computeFamily);
         }
 
         const float queuePriority = 1.0f;
@@ -617,6 +657,15 @@ namespace Core
         else
         {
             m_TransferQueue = m_GraphicsQueue;
+        }
+
+        if (m_QueueFamilyIndices.HasDedicatedCompute())
+        {
+            vkGetDeviceQueue(m_Device, m_QueueFamilyIndices.computeFamily, 0, &m_ComputeQueue);
+        }
+        else
+        {
+            m_ComputeQueue = m_GraphicsQueue;
         }
     }
 

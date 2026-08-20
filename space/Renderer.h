@@ -91,6 +91,13 @@ namespace Core
         void SetCamera(const Camera& camera);
         void DrawMesh(const Mesh& mesh, Material& material, const glm::mat4& transform);
         void DrawMesh(const Mesh& mesh, Material& material, const void* pushConstantData, uint32_t pushConstantSize);
+
+        // One draw call for instanceCount copies of mesh, with no per-instance vertex buffer and
+        // no CPU-side instance list: the vertex shader is expected to source per-instance data
+        // itself, e.g. indexing a storage buffer by gl_InstanceIndex. This is the path for
+        // GPU-resident data that must never round-trip through the host.
+        void DrawMeshInstanced(const Mesh& mesh, Material& material, uint32_t instanceCount);
+        void DrawMeshInstanced(const Mesh& mesh, Material& material, uint32_t instanceCount, const void* pushConstantData, uint32_t pushConstantSize);
         void EndRenderPass();
         void EndFrame();
 
@@ -108,7 +115,14 @@ namespace Core
         VkFormat GetDepthFormat() const { return m_DepthFormat; }
         float GetAspectRatio() const { return m_Swapchain.GetAspectRatio(); }
         VkExtent2D GetExtent() const { return m_Swapchain.GetExtent(); }
+        // The frame command buffer is open from BeginFrame() until EndFrame(), and BeginRenderPass()
+        // is a separate call, so compute work can be recorded into this between the two without a
+        // second submission or a queue stall.
         VkCommandBuffer GetCommandBuffer() const { return m_CommandBuffers[m_FrameIndex]; }
+
+        // Blocks until the work submitted by the last EndFrame() has completed on the device.
+        // Required before reading anything that frame copied into a host-visible buffer.
+        void WaitForLastFrame() const;
         Swapchain& GetSwapchain() { return m_Swapchain; }
         DescriptorManager& GetMaterialDescriptors() { return m_MaterialDescriptors; }
         void SetVSync(bool enabled);
@@ -119,6 +133,7 @@ namespace Core
         void CreateCameraResources();
         void RecreateSwapchainResources();
         void BindCameraSet(const GraphicsPipeline& pipeline);
+        VkCommandBuffer PrepareDraw(const Mesh& mesh, Material& material, const void* pushConstantData, uint32_t pushConstantSize);
 
     private:
         VulkanContext* m_Context{ nullptr };

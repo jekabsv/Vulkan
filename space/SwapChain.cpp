@@ -70,6 +70,7 @@ namespace Core
         , m_RenderFinishedSemaphores(std::move(other.m_RenderFinishedSemaphores))
         , m_InFlightFences(std::move(other.m_InFlightFences))
         , m_ImagesInFlight(std::move(other.m_ImagesInFlight))
+        , m_LastSubmittedFence(other.m_LastSubmittedFence)
         , m_CurrentFrame(other.m_CurrentFrame)
     {
         other.m_Context = nullptr;
@@ -100,6 +101,7 @@ namespace Core
         m_RenderFinishedSemaphores = std::move(other.m_RenderFinishedSemaphores);
         m_InFlightFences = std::move(other.m_InFlightFences);
         m_ImagesInFlight = std::move(other.m_ImagesInFlight);
+        m_LastSubmittedFence = other.m_LastSubmittedFence;
         m_CurrentFrame = other.m_CurrentFrame;
 
         other.m_Context = nullptr;
@@ -369,6 +371,10 @@ namespace Core
         m_RenderFinishedSemaphores.clear();
         m_InFlightFences.clear();
         m_ImagesInFlight.clear();
+
+        // The fences it pointed into are gone; a swapchain recreate must not leave a dangling
+        // handle for GetLastSubmittedFence() to hand out.
+        m_LastSubmittedFence = VK_NULL_HANDLE;
     }
 
     void Swapchain::Recreate()
@@ -482,6 +488,8 @@ namespace Core
         CheckResult(
             vkQueueSubmit(m_Context->GetGraphicsQueue(), 1, &submitInfo, m_InFlightFences[m_CurrentFrame]),
             "Failed to submit draw command buffer");
+
+        m_LastSubmittedFence = m_InFlightFences[m_CurrentFrame];
 
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;

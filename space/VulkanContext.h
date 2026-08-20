@@ -18,15 +18,26 @@ namespace Core
         uint32_t graphicsFamily{ InvalidQueueFamily };
         uint32_t presentFamily{ InvalidQueueFamily };
         uint32_t transferFamily{ InvalidQueueFamily };
+        uint32_t computeFamily{ InvalidQueueFamily };
 
         bool IsComplete() const
         {
-            return graphicsFamily != InvalidQueueFamily && presentFamily != InvalidQueueFamily;
+            return graphicsFamily != InvalidQueueFamily
+                && presentFamily != InvalidQueueFamily
+                && computeFamily != InvalidQueueFamily;
         }
 
         bool HasDedicatedTransfer() const
         {
             return transferFamily != InvalidQueueFamily && transferFamily != graphicsFamily;
+        }
+
+        // True when compute runs on its own family and can overlap graphics. Crossing families
+        // means queue ownership transfers and cross-queue semaphores, so the default is false:
+        // compute shares the graphics family and records into the frame command buffer.
+        bool HasDedicatedCompute() const
+        {
+            return computeFamily != InvalidQueueFamily && computeFamily != graphicsFamily;
         }
     };
 
@@ -53,6 +64,7 @@ namespace Core
         bool enableValidationLayers{ true };
         bool preferDiscreteGpu{ true };
         bool requestDedicatedTransferQueue{ true };
+        bool requestDedicatedComputeQueue{ false };
 
         std::vector<const char*> requiredDeviceExtensions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
         std::vector<const char*> optionalDeviceExtensions;
@@ -78,6 +90,7 @@ namespace Core
         VkQueue GetGraphicsQueue() const { return m_GraphicsQueue; }
         VkQueue GetPresentQueue() const { return m_PresentQueue; }
         VkQueue GetTransferQueue() const { return m_TransferQueue; }
+        VkQueue GetComputeQueue() const { return m_ComputeQueue; }
 
         VmaAllocator GetAllocator() const { return m_Allocator; }
 
@@ -135,6 +148,7 @@ namespace Core
         VkQueue m_GraphicsQueue{ VK_NULL_HANDLE };
         VkQueue m_PresentQueue{ VK_NULL_HANDLE };
         VkQueue m_TransferQueue{ VK_NULL_HANDLE };
+        VkQueue m_ComputeQueue{ VK_NULL_HANDLE };
 
         VkPhysicalDeviceProperties m_DeviceProperties{};
         VkPhysicalDeviceFeatures m_EnabledFeatures{};
