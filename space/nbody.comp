@@ -1,0 +1,78 @@
+#version 450
+
+// glslc nbody.comp -o nbody.spv
+//
+// Placeholder integrator: every particle sums the pull of every other one. O(N^2), so it stops
+// being usable somewhere around a few thousand particles — it exists to get the host/device sync
+// and the render path working against real motion, and gets replaced by the Barnes-Hut traversal
+// once the octree passes land. The buffer layout and push constants are already the final ones,
+// so that swap does not touch ParticleSimulation.
+
+layout(local_size_x = 256) in;
+
+struct Particle
+{
+    vec4 positionMass;  // xyz = position, w = mass
+    vec4 velocity;      // xyz = velocity, w = unused
+};
+
+layout(std430, set = 0, binding = 0) readonly buffer InState
+{
+    Particle inParticles[];
+};
+
+layout(std430, set = 0, binding = 1) writeonly buffer OutState
+{
+    Particle outParticles[];
+};
+
+layout(push_constant) uniform PushConstants
+{
+    float deltaTime;
+    float gravity;
+    float softening;
+    uint count;
+} pc;
+
+void main()
+{
+    uint index = gl_GlobalInvocationID.x;
+
+    if (index >= pc.count)
+    {
+        return;
+    }
+
+    vec3 position = inParticles[index].positionMass.xyz;
+    vec3 velocity = inParticles[index].velocity.xyz;
+    float mass = inParticles[index].positionMass.w;
+
+    // Plummer softening, squared once outside the loop: without it the 1/r^2 term explodes when
+    // two particles pass close together and the integrator throws them off to infinity.
+    float softeningSquared = pc.softening * pc.softening;
+
+    vec3 acceleration = vec3(0.0);
+
+    for (uint other = 0; other < pc.count; other++)
+    {
+        if (other == index)
+        {
+            continue;
+        }
+
+        vec3 offset = inParticles[other].positionMass.xyz - position;
+        float otherMass = inParticles[other].positionMass.w;
+
+        float distanceSquared = dot(offset, offset) + softeningSquared;
+        float inverseDistance = inversesqrt(distanceSquared);
+
+        // offset * inverseDistance normalises; the remaining 1/d^2 is the falloff.
+        acceleration += offset * (otherMass * inverseDistance * inverseDistance * inverseDistance);
+    }
+
+    velocity += acceleration * pc.gravity * pc.deltaTime;
+    position += velocity * pc.deltaTime;
+
+    outParticles[index].positionMass = vec4(position, mass);
+    outParticles[index].velocity = vec4(velocity, 0.0);
+}
