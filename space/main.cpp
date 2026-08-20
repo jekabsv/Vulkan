@@ -13,6 +13,8 @@
 #include <vector>
 #include <string>
 
+//nbody
+
 namespace
 {
     std::vector<uint8_t> MakeCheckerPixels(uint32_t size, uint32_t squares)
