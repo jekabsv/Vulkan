@@ -200,6 +200,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="nbody.comp" />
+    <None Include="particle.frag" />
+    <None Include="particle.vert" />
     <None Include="particles.comp" />
     <None Include="text.frag" />
     <None Include="text.vert" />
