@@ -117,6 +117,33 @@ namespace Core
         m_DescriptorDirty = true;
     }
 
+    void Material::SetStorageBuffer(const std::string& name, const Buffer& buffer)
+    {
+        const ShaderBinding* binding = m_Pipeline->FindBindingByName(m_Set, name);
+
+        if (binding == nullptr)
+        {
+            throw std::runtime_error("Material storage buffer not found in shader reflection: " + name);
+        }
+
+        auto existing = m_StorageBuffers.find(binding->binding);
+
+        if (existing != m_StorageBuffers.end() && existing->second == &buffer)
+        {
+            // Same buffer as last frame: rewriting the descriptor set would be pure overhead.
+            return;
+        }
+
+        m_StorageBuffers[binding->binding] = &buffer;
+        m_DescriptorDirty = true;
+    }
+
+    bool Material::HasStorageBuffer(const std::string& name) const
+    {
+        const ShaderBinding* binding = m_Pipeline->FindBindingByName(m_Set, name);
+        return binding != nullptr && binding->descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    }
+
     bool Material::HasProperty(const std::string& name) const
     {
         uint32_t binding = 0;
@@ -150,6 +177,16 @@ namespace Core
                 continue;
             }
 
+            if (declared.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+            {
+                if (m_StorageBuffers.find(declared.binding) == m_StorageBuffers.end())
+                {
+                    throw std::runtime_error("Material is missing a storage buffer required by the shader: " + declared.name);
+                }
+
+                continue;
+            }
+
             if (declared.descriptorType != VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
             {
                 continue;
@@ -171,6 +208,11 @@ namespace Core
         for (const auto& entry : m_Textures)
         {
             writer.WriteImage(entry.first, entry.second->GetDescriptorInfo());
+        }
+
+        for (const auto& entry : m_StorageBuffers)
+        {
+            writer.WriteBuffer(entry.first, *entry.second);
         }
 
         m_DescriptorSet = writer.Build();

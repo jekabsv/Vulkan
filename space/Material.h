@@ -37,6 +37,13 @@ namespace Core
         void SetMat4(const std::string& name, const glm::mat4& value);
         void SetTexture(const std::string& name, const Texture& texture);
 
+        // Binds a storage buffer by its name in the shader. The material keeps only a pointer, so
+        // the buffer must outlive it — and because the pointed-at buffer can be swapped every
+        // frame (a ping-pong pair, for instance), rebinding the same name with a different buffer
+        // is cheap and expected.
+        void SetStorageBuffer(const std::string& name, const Buffer& buffer);
+        bool HasStorageBuffer(const std::string& name) const;
+
         bool HasProperty(const std::string& name) const;
         bool HasTexture(const std::string& name) const;
 
@@ -62,6 +69,7 @@ namespace Core
         std::vector<Buffer> m_UniformBuffer;
 
         std::unordered_map<uint32_t, const Texture*> m_Textures;
+        std::unordered_map<uint32_t, const Buffer*> m_StorageBuffers;
 
         VkDescriptorSet m_DescriptorSet{ VK_NULL_HANDLE };
         bool m_UniformDirty{ false };
