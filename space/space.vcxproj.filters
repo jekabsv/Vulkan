@@ -108,6 +108,12 @@
     <ClCompile Include="Camera.cpp">
       <Filter>Source Files\Internals</Filter>
     </ClCompile>
+    <ClCompile Include="ParticleManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ParticleSimulation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="spirv_reflect.h">
@@ -170,6 +176,12 @@
     <ClInclude Include="Camera.h">
       <Filter>Header Files\Internals\VulkanCore</Filter>
     </ClInclude>
+    <ClInclude Include="ParticleManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ParticleSimulation.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="triangle.vert">
@@ -194,6 +206,15 @@
       <Filter>Resource Files</Filter>
     </None>
     <None Include="particles.comp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="nbody.comp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="particle.frag">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="particle.vert">
       <Filter>Resource Files</Filter>
     </None>
   </ItemGroup>

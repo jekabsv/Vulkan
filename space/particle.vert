@@ -29,10 +29,13 @@ struct Particle
     vec4 velocity;      // xyz = velocity, w = unused
 };
 
+// Given an instance name on purpose: Shader.cpp reflects a binding's name from the SPIR-V
+// variable and only falls back to the block's type name when that is empty, so naming the
+// instance is what makes "u_Particles" the stable key for Material::SetStorageBuffer.
 layout(std430, set = 2, binding = 1) readonly buffer ParticleBuffer
 {
     Particle particles[];
-};
+} u_Particles;
 
 // The mesh is the unit sphere from Mesh::CreateSphere. Build it with radius 1.0 for particles:
 // whatever radius it was generated at multiplies into u_ParticleScale below.
@@ -46,7 +49,7 @@ layout(location = 2) out float fragSpeed01;
 
 void main()
 {
-    Particle particle = particles[gl_InstanceIndex];
+    Particle particle = u_Particles.particles[gl_InstanceIndex];
 
     vec3 center = particle.positionMass.xyz;
     float mass = particle.positionMass.w;

@@ -6,46 +6,74 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <algorithm>
 #include <chrono>
 #include <cstdlib>
+#include <cstdint>
 #include <iostream>
-#include <optional>
-#include <vector>
+#include <random>
 #include <string>
+#include <vector>
 
-//nbody
+#include "ParticleManager.h"
+#include "ParticleSimulation.h"
 
 namespace
 {
+    constexpr uint32_t OrbiterCount = 4096;
+    constexpr float CentralMass = 500.0f;
+    constexpr float Gravity = 1.0f;
 
+    constexpr float InnerRadius = 1.5f;
+    constexpr float OuterRadius = 8.0f;
 
-    std::vector<uint8_t> MakeCheckerPixels(uint32_t size, uint32_t squares)
+    // The N^2 kernel is stable well past this, but a large step turns a circular orbit into an
+    // outward spiral through plain integration error, so the step is capped rather than tracking
+    // a slow frame.
+    constexpr float MaxTimeStep = 1.0f / 120.0f;
+
+    std::string FormatFloat(float value, int decimals)
     {
-        std::vector<uint8_t> pixels(static_cast<size_t>(size) * size * 4);
+        std::string text = std::to_string(value);
+        const size_t dot = text.find('.');
 
-        for (uint32_t y = 0; y < size; y++)
+        if (dot != std::string::npos && dot + static_cast<size_t>(decimals) + 1 < text.size())
         {
-            for (uint32_t x = 0; x < size; x++)
-            {
-                const uint32_t cellX = x * squares / size;
-                const uint32_t cellY = y * squares / size;
-
-                uint8_t value = 60;
-
-                if ((cellX + cellY) % 2 == 0)
-                {
-                    value = 220;
-                }
-
-                const size_t index = (static_cast<size_t>(y) * size + x) * 4;
-                pixels[index + 0] = value;
-                pixels[index + 1] = value;
-                pixels[index + 2] = value;
-                pixels[index + 3] = 255;
-            }
+            text.erase(dot + static_cast<size_t>(decimals) + 1);
         }
 
-        return pixels;
+        return text;
+    }
+
+    // A heavy body at the origin with a disc of orbiters around it. Each orbiter gets the circular
+    // velocity for its radius, sqrt(G * M / r), so the disc holds together instead of collapsing
+    // on the first frame — which makes it obvious at a glance whether the integrator is working.
+    void SeedGalaxy(Core::ParticleManager& particles, uint32_t orbiterCount)
+    {
+        particles.Clear();
+        particles.Reserve(orbiterCount + 1);
+
+        particles.CreateParticle(Core::ParticleState{ glm::vec3(0.0f), glm::vec3(0.0f), CentralMass });
+
+        std::mt19937 rng(1337);
+        std::uniform_real_distribution<float> angleDist(0.0f, 6.2831853f);
+        std::uniform_real_distribution<float> radiusDist(InnerRadius, OuterRadius);
+        std::uniform_real_distribution<float> heightDist(-0.15f, 0.15f);
+        std::uniform_real_distribution<float> massDist(0.5f, 1.5f);
+
+        for (uint32_t i = 0; i < orbiterCount; i++)
+        {
+            const float angle = angleDist(rng);
+            const float radius = radiusDist(rng);
+
+            const glm::vec3 position(radius * std::cos(angle), heightDist(rng), radius * std::sin(angle));
+
+            // Tangent in the xz plane, so the whole disc circulates the same way.
+            const glm::vec3 tangent(-std::sin(angle), 0.0f, std::cos(angle));
+            const float orbitalSpeed = std::sqrt(Gravity * CentralMass / radius);
+
+            particles.CreateParticle(Core::ParticleState{ position, tangent * orbitalSpeed, massDist(rng) });
+        }
     }
 }
 
@@ -53,54 +81,36 @@ int main()
 {
     try
     {
-        Core::Window window(1280, 720, "3D Engine");
+        Core::Window window(1280, 720, "N-Body");
         Core::VulkanContext context(window);
         Core::Renderer renderer(context, window);
         Core::AssetManager assets(context, renderer);
 
         // --- Shaders ---
-        assets.LoadShader("triangle_vert", "vert.spv");
-        assets.LoadShader("triangle_frag", "frag.spv");
-        assets.LoadShader("triangle_instanced_vert", "triangle_instanced_vert.spv");
+        assets.LoadShader("particle_vert", "particle_vert.spv");
+        assets.LoadShader("particle_frag", "particle_frag.spv");
+        assets.LoadShader("nbody_comp", "nbody.spv");
         assets.LoadShader("text_instanced_vert", "text_instanced_vert.spv");
         assets.LoadShader("text_instanced_frag", "text_instanced_frag.spv");
 
         // --- Pipelines ---
-        Core::PipelineConfig pipelineConfig;
-        pipelineConfig.vertexInput = Core::Vertex::GetLayout();
-        pipelineConfig.cullMode = VK_CULL_MODE_BACK_BIT;
-        pipelineConfig.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-        pipelineConfig.depthTestEnable = true;
-        pipelineConfig.depthWriteEnable = true;
-        pipelineConfig.colorAttachmentFormats.push_back(renderer.GetColorFormat());
-        pipelineConfig.depthAttachmentFormat = renderer.GetDepthFormat();
+        // No per-instance vertex layout: the vertex shader reads the particle storage buffer by
+        // gl_InstanceIndex, so there is nothing per-instance for the host to supply.
+        Core::PipelineConfig particlePipelineConfig;
+        particlePipelineConfig.vertexInput = Core::Vertex::GetLayout();
+        particlePipelineConfig.cullMode = VK_CULL_MODE_BACK_BIT;
+        particlePipelineConfig.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        particlePipelineConfig.depthTestEnable = true;
+        particlePipelineConfig.depthWriteEnable = true;
+        particlePipelineConfig.colorAttachmentFormats.push_back(renderer.GetColorFormat());
+        particlePipelineConfig.depthAttachmentFormat = renderer.GetDepthFormat();
 
-        std::vector<const Core::Shader*> pbrShaders;
-        pbrShaders.push_back(&assets.GetShader("triangle_vert"));
-        pbrShaders.push_back(&assets.GetShader("triangle_frag"));
+        std::vector<const Core::Shader*> particleShaders;
+        particleShaders.push_back(&assets.GetShader("particle_vert"));
+        particleShaders.push_back(&assets.GetShader("particle_frag"));
 
-        assets.SetPipeline("pbr", Core::GraphicsPipeline(context, pbrShaders, pipelineConfig));
+        assets.SetPipeline("particles", Core::GraphicsPipeline(context, particleShaders, particlePipelineConfig));
 
-        // Mesh batching: reads the model matrix from a per-instance vertex buffer instead of a
-        // push constant, so it shares triangle.frag/frag.spv with "pbr" above unchanged.
-        Core::PipelineConfig instancedPipelineConfig;
-        instancedPipelineConfig.vertexInput = Core::Vertex::GetLayout();
-        Core::InstanceBatch::AppendInstanceLayout(instancedPipelineConfig.vertexInput, 1, 3);
-        instancedPipelineConfig.cullMode = VK_CULL_MODE_BACK_BIT;
-        instancedPipelineConfig.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-        instancedPipelineConfig.depthTestEnable = true;
-        instancedPipelineConfig.depthWriteEnable = true;
-        instancedPipelineConfig.colorAttachmentFormats.push_back(renderer.GetColorFormat());
-        instancedPipelineConfig.depthAttachmentFormat = renderer.GetDepthFormat();
-
-        std::vector<const Core::Shader*> instancedShaders;
-        instancedShaders.push_back(&assets.GetShader("triangle_instanced_vert"));
-        instancedShaders.push_back(&assets.GetShader("triangle_frag"));
-
-        assets.SetPipeline("instanced", Core::GraphicsPipeline(context, instancedShaders, instancedPipelineConfig));
-
-        // Instanced text: per-letter transform, atlas UV rect and color all come from per-instance
-        // vertex data (see Font::AppendInstanceLayout), not push constants/Material.
         Core::PipelineConfig textPipelineConfig;
         textPipelineConfig.vertexInput = Core::Vertex::GetLayout();
         Core::Font::AppendInstanceLayout(textPipelineConfig.vertexInput, 1, 3);
@@ -117,102 +127,49 @@ int main()
 
         assets.SetPipeline("text", Core::GraphicsPipeline(context, textShaders, textPipelineConfig));
 
+        assets.SetComputePipeline("nbody", Core::ComputePipeline(context, assets.GetShader("nbody_comp")));
+
         // --- Mesh ---
-        assets.SetMesh("cube", Core::Mesh::CreateCube(context));
+        // Radius 1.0: particle.vert scales by u_ParticleScale, and any radius baked into the mesh
+        // would multiply into that. Low tessellation because this is drawn thousands of times.
+        assets.SetMesh("particle", Core::Mesh::CreateSphere(context, 1.0f, 12, 8));
 
-        // --- Texture ---
-        const uint32_t textureSize = 256;
-        const std::vector<uint8_t> pixels = MakeCheckerPixels(textureSize, 8);
+        // --- Material ---
+        Core::Material& particleMaterial = assets.SetMaterial("particles", renderer.CreateMaterial(assets.GetPipeline("particles")));
+        particleMaterial.SetVec3("u_AlbedoColor", glm::vec3(0.35f, 0.45f, 0.85f));
+        particleMaterial.SetFloat("u_ParticleScale", 0.05f);
+        particleMaterial.SetVec3("u_FastColor", glm::vec3(1.0f, 0.75f, 0.3f));
+        particleMaterial.SetFloat("u_SpeedRange", 20.0f);
 
-        Core::TextureConfig textureConfig;
-        textureConfig.width = textureSize;
-        textureConfig.height = textureSize;
-        textureConfig.format = VK_FORMAT_R8G8B8A8_SRGB;
-        textureConfig.generateMipmaps = true;
+        Core::Font& textFont = assets.LoadFont("main", assets.GetPipeline("text"), "font.ttf", 48.0f);
+        const float textScale = 1.0f / 48.0f;
 
-        assets.SetTexture("wood", Core::Texture(context, textureConfig, pixels.data(), static_cast<VkDeviceSize>(pixels.size())));
+        // --- Simulation ---
+        Core::ParticleManager particles;
+        SeedGalaxy(particles, OrbiterCount);
 
-        // --- Materials ---
-        Core::Material& woodMaterial = assets.SetMaterial("wood", renderer.CreateMaterial(assets.GetPipeline("pbr")));
-        woodMaterial.SetVec3("u_AlbedoColor", glm::vec3(1.0f, 0.8f, 0.6f));
-        woodMaterial.SetFloat("u_Roughness", 1.0f);
-        woodMaterial.SetFloat("u_Metallic", 0.0f);
-        woodMaterial.SetVec2("u_Tiling", glm::vec2(1.0f, 1.0f));
-        woodMaterial.SetTexture("u_AlbedoMap", assets.GetTexture("wood"));
+        Core::ParticleSimulationConfig simulationConfig;
+        simulationConfig.capacity = OrbiterCount * 2;
+        simulationConfig.gravity = Gravity;
+        simulationConfig.softening = 0.05f;
 
-        Core::Material& instancedWoodMaterial = assets.SetMaterial("wood_instanced", renderer.CreateMaterial(assets.GetPipeline("instanced")));
-        instancedWoodMaterial.SetVec3("u_AlbedoColor", glm::vec3(1.0f, 0.8f, 0.6f));
-        instancedWoodMaterial.SetFloat("u_Roughness", 1.0f);
-        instancedWoodMaterial.SetFloat("u_Metallic", 0.0f);
-        instancedWoodMaterial.SetVec2("u_Tiling", glm::vec2(1.0f, 1.0f));
-        instancedWoodMaterial.SetTexture("u_AlbedoMap", assets.GetTexture("wood"));
+        Core::ParticleSimulation simulation(context, assets.GetComputePipeline("nbody"), simulationConfig);
 
-
-        constexpr uint32_t particleCount = 0;
-        constexpr uint32_t particleLocalSizeX = 128;
-        constexpr float particleScale = 0.05f;
-
-        struct ParticlePushConstants
-        {
-            float time;
-            uint32_t count;
-        };
-
-        bool particlesEnabled = false;
-        std::optional<Core::Buffer> particleBuffer;
-        std::optional<Core::Buffer> particleReadback;
-        std::optional<Core::DescriptorManager> particleDescriptors;
-        VkDescriptorSet particleDescriptorSet = VK_NULL_HANDLE;
-        Core::Material* particleMaterial = nullptr;
-
-        try
-        {
-            assets.LoadShader("particles_comp", "particles.spv");
-            assets.SetComputePipeline("particles", Core::ComputePipeline(context, assets.GetShader("particles_comp")));
-
-            particleBuffer.emplace(context, sizeof(glm::vec4) * particleCount, Core::BufferType::Storage, Core::MemoryUsage::DeviceLocal);
-            particleReadback.emplace(context, particleBuffer->GetSize(), Core::BufferType::Staging, Core::MemoryUsage::HostReadback);
-            particleDescriptors.emplace(context, 1);
-
-            Core::DescriptorWriter particleWriter = particleDescriptors->Begin(assets.GetComputePipeline("particles"), 0);
-            particleWriter.WriteBuffer(0, *particleBuffer);
-            particleDescriptorSet = particleWriter.Build();
-
-            particleMaterial = &assets.SetMaterial("particles", renderer.CreateMaterial(assets.GetPipeline("instanced")));
-            particleMaterial->SetVec3("u_AlbedoColor", glm::vec3(1.0f, 0.35f, 0.15f));
-            particleMaterial->SetFloat("u_Roughness", 1.0f);
-            particleMaterial->SetFloat("u_Metallic", 0.0f);
-            particleMaterial->SetVec2("u_Tiling", glm::vec2(1.0f, 1.0f));
-            particleMaterial->SetTexture("u_AlbedoMap", assets.GetTexture("wood"));
-
-            particlesEnabled = true;
-        }
-        catch (const std::exception& error)
-        {
-            std::cerr << "[Particles] Skipped (compile particles.comp to particles.spv with glslc to enable): "
-                << error.what() << std::endl;
-        }
-
-        // --- Font ---
-        const float fontPixelHeight = 48.0f;
-        Core::Font& textFont = assets.LoadFont("main", assets.GetPipeline("text"), "font.ttf", fontPixelHeight);
-
-
-        const float textScale = 1.0f / fontPixelHeight;
+        particles.AttachSyncSource(&simulation);
+        simulation.Upload(particles);
 
         Core::Camera mainCamera;
-        mainCamera.SetPosition(glm::vec3(2.4f, 1.8f, 2.4f));
+        mainCamera.SetPosition(glm::vec3(0.0f, 9.0f, 16.0f));
         mainCamera.LookAt(glm::vec3(0.0f));
 
-        const auto startTime = std::chrono::high_resolution_clock::now();
-
-        float prevFrameTime = 0.0f;
+        auto frameStart = std::chrono::high_resolution_clock::now();
+        float previousFrameTime = 1.0f / 60.0f;
         glm::vec2 lastMousePos = window.GetMousePos();
+
+        std::string syncMessage = "running";
 
         while (!window.ShouldClose())
         {
-            auto FrameStart = std::chrono::high_resolution_clock::now();
-
             window.PollEvents();
 
             if (window.IsKeyPressed(Core::KeyCode::Escape))
@@ -220,30 +177,15 @@ int main()
                 window.Close();
                 continue;
             }
-            if (window.IsKeyDown(Core::KeyCode::W))
-            {
-                mainCamera.MoveForward(0.1f);
-            }
-            if (window.IsKeyDown(Core::KeyCode::S))
-            {
-                mainCamera.MoveForward(-0.1f);
-            }
-            if (window.IsKeyDown(Core::KeyCode::A))
-            {
-                mainCamera.MoveRight(-0.1f);
-            }
-            if (window.IsKeyDown(Core::KeyCode::D))
-            {
-                mainCamera.MoveRight(0.1f);
-            }
-            if (window.IsKeyDown(Core::KeyCode::Space))
-            {
-                mainCamera.MoveWorld(glm::vec3(0.0f, 0.1f, 0.0f));
-            }
-            if (window.IsKeyDown(Core::KeyCode::Q))
-            {
-                mainCamera.MoveWorld(glm::vec3(0.0f, -0.1f, 0.0f));
-            }
+
+            const float cameraSpeed = 12.0f * previousFrameTime;
+
+            if (window.IsKeyDown(Core::KeyCode::W)) { mainCamera.MoveForward(cameraSpeed); }
+            if (window.IsKeyDown(Core::KeyCode::S)) { mainCamera.MoveForward(-cameraSpeed); }
+            if (window.IsKeyDown(Core::KeyCode::A)) { mainCamera.MoveRight(-cameraSpeed); }
+            if (window.IsKeyDown(Core::KeyCode::D)) { mainCamera.MoveRight(cameraSpeed); }
+            if (window.IsKeyDown(Core::KeyCode::Space)) { mainCamera.MoveWorld(glm::vec3(0.0f, cameraSpeed, 0.0f)); }
+            if (window.IsKeyDown(Core::KeyCode::Q)) { mainCamera.MoveWorld(glm::vec3(0.0f, -cameraSpeed, 0.0f)); }
 
             const glm::vec2 mousePos = window.GetMousePos();
             const glm::vec2 mouseDelta = mousePos - lastMousePos;
@@ -256,93 +198,124 @@ int main()
                 mainCamera.Pitch(-mouseDelta.y * mouseSensitivity);
             }
 
-            auto now = std::chrono::high_resolution_clock::now();
+            // --- Host/device sync ---
+            // Both of these run outside the BeginFrame/EndFrame pair, which AcquireLatest requires
+            // and PeekLatest needs so it reads the ring slot before this frame overwrites it.
 
-            float elapsed = std::chrono::duration<float>(now - startTime).count();
-
-            mainCamera.SetPerspective(glm::radians(50.0f), renderer.GetAspectRatio(), 0.1f, 100.0f);
-
-            const glm::mat4 transformMatrix = glm::rotate(glm::mat4(1.0f), elapsed * 0.6f, glm::vec3(0.0f, 1.0f, 0.0f));
-
-            std::vector<glm::vec4> particlePositions;
-
-            if (particlesEnabled)
+            // G: the full read-modify-write cycle. Halts the device, edits exact state, resumes.
+            if (window.IsKeyPressed(Core::KeyCode::G))
             {
-                ParticlePushConstants particlePushConstants{ elapsed, particleCount };
+                if (particles.GetLatest())
+                {
+                    // Kick every orbiter outward a little, and add a second heavy body so the
+                    // structural path (realloc + re-upload) gets exercised too.
+                    const std::vector<Core::ParticleId>& ids = particles.GetIds();
 
-                VkCommandBuffer computeCommandBuffer = context.BeginSingleTimeCommands();
+                    for (Core::ParticleId id : ids)
+                    {
+                        glm::vec3 position;
+                        glm::vec3 velocity;
 
-                const Core::ComputePipeline& particlePipeline = assets.GetComputePipeline("particles");
-                particlePipeline.Bind(computeCommandBuffer);
-                particlePipeline.BindDescriptorSets(computeCommandBuffer, 0, { particleDescriptorSet });
-                particlePipeline.PushConstants(computeCommandBuffer, 0, sizeof(particlePushConstants), &particlePushConstants);
-                particlePipeline.Dispatch(computeCommandBuffer, (particleCount + particleLocalSizeX - 1) / particleLocalSizeX);
+                        if (particles.GetPosition(id, position) && particles.GetVelocity(id, velocity))
+                        {
+                            const float distance = glm::length(position);
 
-                Core::ComputePipeline::BufferBarrier(
-                    computeCommandBuffer,
-                    *particleBuffer,
-                    VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
-                    VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT);
+                            if (distance > 0.001f)
+                            {
+                                particles.SetVelocity(id, velocity + (position / distance) * 0.5f);
+                            }
+                        }
+                    }
 
-                VkBufferCopy copyRegion{};
-                copyRegion.size = particleBuffer->GetSize();
-                vkCmdCopyBuffer(computeCommandBuffer, particleBuffer->GetHandle(), particleReadback->GetHandle(), 1, &copyRegion);
+                    particles.CreateParticle(Core::ParticleState{ glm::vec3(0.0f, 4.0f, 0.0f), glm::vec3(6.0f, 0.0f, 0.0f), 120.0f });
+                    particles.Resume();
 
-                context.EndSingleTimeCommands(computeCommandBuffer);
-
-                particleReadback->Invalidate(particleReadback->GetSize(), 0);
-
-                const glm::vec4* positions = static_cast<const glm::vec4*>(particleReadback->GetMappedData());
-                particlePositions.assign(positions, positions + particleCount);
+                    syncMessage = "kicked + spawned, resumed";
+                }
             }
+
+            // P: read-only snapshot. Never halts, and the data is a few frames stale.
+            if (window.IsKeyPressed(Core::KeyCode::P))
+            {
+                if (particles.PeekLatest())
+                {
+                    float fastest = 0.0f;
+
+                    for (const glm::vec3& velocity : particles.GetVelocities())
+                    {
+                        fastest = std::max(fastest, glm::length(velocity));
+                    }
+
+                    syncMessage = "peek: fastest " + FormatFloat(fastest, 2);
+                }
+                else
+                {
+                    syncMessage = "peek: no snapshot yet";
+                }
+            }
+
+            // R: rebuild the whole system from scratch.
+            if (window.IsKeyPressed(Core::KeyCode::R))
+            {
+                if (particles.GetLatest())
+                {
+                    SeedGalaxy(particles, OrbiterCount);
+                    particles.Resume();
+
+                    syncMessage = "reset";
+                }
+            }
+
+            mainCamera.SetPerspective(glm::radians(50.0f), renderer.GetAspectRatio(), 0.1f, 500.0f);
+
+            const float timeStep = std::min(previousFrameTime, MaxTimeStep);
 
             if (renderer.BeginFrame())
             {
-                renderer.BeginRenderPass(glm::vec4(0.1f, 0.1f, 0.12f, 1.0f));
+                // The frame command buffer is open but the render pass has not begun, so compute
+                // goes in here — no second submit, no queue stall.
+                VkCommandBuffer commandBuffer = renderer.GetCommandBuffer();
 
+                simulation.RecordCompute(commandBuffer, timeStep);
+                simulation.RecordPeekCopy(commandBuffer);
+
+                renderer.BeginRenderPass(glm::vec4(0.02f, 0.02f, 0.05f, 1.0f));
                 renderer.SetCamera(mainCamera);
-                renderer.DrawMesh(assets.GetMesh("cube"), woodMaterial, transformMatrix);
 
+                // Rebound every frame because the ping-pong pair alternates which buffer holds the
+                // newest state; Material skips the descriptor rewrite when the pointer is unchanged.
+                particleMaterial.SetStorageBuffer("u_Particles", simulation.GetRenderBuffer());
+
+                renderer.DrawMeshInstanced(assets.GetMesh("particle"), particleMaterial, simulation.GetParticleCount());
 
                 renderer.BeginBatch();
 
+                const float fps = 1.0f / std::max(0.0001f, previousFrameTime);
 
-                constexpr int a = 200;
-
-                for (int gridX = -1 * a; gridX <= a; gridX++)
-                {
-                    for (int gridZ = -1 * a; gridZ <= a; gridZ++)
-                    {
-                        const glm::vec3 offset(static_cast<float>(gridX) * 1.5f, 0.0f, static_cast<float>(gridZ) * 1.5f);
-                        const glm::mat4 instanceTransform = glm::translate(glm::mat4(1.0f), offset) * transformMatrix;
-                        renderer.Submit(assets.GetMesh("cube"), instancedWoodMaterial, instanceTransform);
-                    }
-                }
-
-                if (particlesEnabled)
-                {
-                    for (const glm::vec4& position : particlePositions)
-                    {
-                        const glm::mat4 particleTransform = glm::scale(
-                            glm::translate(glm::mat4(1.0f), glm::vec3(position)),
-                            glm::vec3(particleScale));
-
-                        renderer.Submit(assets.GetMesh("cube"), *particleMaterial, particleTransform);
-                    }
-                }
-
-                renderer.SubmitText(textFont, "Hello " + std::to_string(4 * a * a) + " cubes", glm::vec3(-2.0f, 2.5f, 0.0f), textScale, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
-                renderer.SubmitText(textFont, "FPS: " + std::to_string(1.0f / std::max(0.0001f, prevFrameTime)) + " FPS", glm::vec3(-2.0f, 1.5f, 0.0f), textScale, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+                renderer.SubmitText(textFont, std::to_string(simulation.GetParticleCount()) + " particles",
+                    glm::vec3(-3.2f, 2.5f, 0.0f), textScale, glm::vec4(1.0f));
+                renderer.SubmitText(textFont, FormatFloat(fps, 1) + " fps",
+                    glm::vec3(-3.2f, 2.1f, 0.0f), textScale, glm::vec4(1.0f));
+                renderer.SubmitText(textFont, simulation.IsHalted() ? "HALTED" : "running",
+                    glm::vec3(-3.2f, 1.7f, 0.0f), textScale, glm::vec4(1.0f));
+                renderer.SubmitText(textFont, syncMessage,
+                    glm::vec3(-3.2f, 1.3f, 0.0f), textScale, glm::vec4(0.7f, 0.8f, 1.0f, 1.0f));
+                renderer.SubmitText(textFont, "G kick+spawn   P peek   R reset",
+                    glm::vec3(-3.2f, -2.5f, 0.0f), textScale, glm::vec4(0.6f, 0.6f, 0.7f, 1.0f));
 
                 renderer.FlushBatch();
 
                 renderer.EndRenderPass();
                 renderer.EndFrame();
 
-                now = std::chrono::high_resolution_clock::now();
-                prevFrameTime = std::chrono::duration<float>(now - FrameStart).count();
-
+                // Only for a frame that was actually submitted: the ping-pong flip and the peek
+                // ring both assume one call per submission.
+                simulation.AdvanceFrame();
             }
+
+            const auto now = std::chrono::high_resolution_clock::now();
+            previousFrameTime = std::chrono::duration<float>(now - frameStart).count();
+            frameStart = now;
         }
 
         context.WaitIdle();
